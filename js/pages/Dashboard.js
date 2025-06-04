@@ -1917,7 +1917,27 @@ function Dashboard() {
                     variablesDropdown.innerHTML = `
                         <div class="text-sm font-medium text-gray-700 mb-2">Insert Variable</div>
                         <div class="space-y-1">
-                            ${billVariables.map(variable => `
+                            ${[
+                                { name: 'businessName', label: 'Business Name' },
+                                { name: 'logo', label: 'Business Logo' },
+                                { name: 'phone', label: 'Phone Number' },
+                                { name: 'address', label: 'Address' },
+                                { name: 'storeLink', label: 'Store Website' },
+                                { name: 'gstIN', label: 'GST Number' },
+                                { name: 'billNo', label: 'Bill Number' },
+                                { name: 'orderSource', label: 'Order Source' },
+                                { name: 'payMode', label: 'Payment Mode' },
+                                { name: 'timestamp', label: 'Date & Time' },
+                                { name: 'cut', label: 'Divider Line' },
+                                { name: 'upiQR', label: 'UPI QR Code' },
+                                { name: 'itemsList', label: 'Items List (Bill)' },
+                                { name: 'kotItemsList', label: 'Items List (KOT)' },
+                                { name: 'subtotal', label: 'Subtotal' },
+                                { name: 'discount', label: 'Discount' },
+                                { name: 'charges', label: 'Additional Charges' },
+                                { name: 'total', label: 'Total Amount' },
+                                { name: 'instructions', label: 'Special Instructions' }
+                            ].map(variable => `
                                 <div class="variable-item p-1 hover:bg-gray-100 rounded cursor-pointer" data-variable="${variable.name}">
                                     <span class="text-red-500">#${variable.name}</span> - ${variable.label}
                                 </div>
@@ -2093,49 +2113,14 @@ function Dashboard() {
                         </div>
                         
                         <div id="tax-config-container" class="space-y-4">
-                            <div class="tax-item border rounded-md p-3">
-                                <div class="flex items-center justify-between mb-2">
-                                    <div class="font-medium">Tax Configuration</div>
-                                    <button id="remove-tax-btn" class="text-gray-400 hover:text-red-500 hidden">
-                                        <i class="ph ph-trash"></i>
-                                    </button>
-                                </div>
-                                
-                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <div>
-                                        <label class="block text-sm text-gray-600 mb-1">Tax Name</label>
-                                        <input 
-                                            type="text" 
-                                            id="tax-name-input" 
-                                            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" 
-                                            placeholder="e.g. GST" 
-                                            value="GST"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm text-gray-600 mb-1">Tax Value (%)</label>
-                                        <input 
-                                            type="number" 
-                                            id="tax-value-input" 
-                                            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" 
-                                            placeholder="e.g. 18" 
-                                            min="0" 
-                                            max="100" 
-                                            value="18"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm text-gray-600 mb-1">Type</label>
-                                        <select 
-                                            id="tax-type-input" 
-                                            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                                        >
-                                            <option value="percentage" selected>Percentage (%)</option>
-                                            <option value="fixed">Fixed Amount (₹)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Tax items will be added here -->
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button id="add-tax-btn" class="flex items-center text-sm text-blue-600 hover:text-blue-800">
+                                <i class="ph ph-plus-circle mr-1"></i>
+                                Add Another Tax
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -2148,26 +2133,178 @@ function Dashboard() {
             `,
             size: 'md',
             onShown: (modalControl) => {
-                const taxNameInput = document.getElementById('tax-name-input');
-                const taxValueInput = document.getElementById('tax-value-input');
-                const taxTypeInput = document.getElementById('tax-type-input');
+                const taxConfigContainer = document.getElementById('tax-config-container');
+                const addTaxBtn = document.getElementById('add-tax-btn');
                 const errorContainer = document.getElementById('tax-update-error-container');
                 const cancelButton = document.getElementById('cancel-tax-update-btn');
                 const saveButton = document.getElementById('save-tax-update-btn');
+                
+                // Keep track of tax items
+                let taxItems = [];
+                
+                // Function to create a new tax item
+                const createTaxItem = (data = {}) => {
+                    const id = Date.now().toString();
+                    const taxItem = {
+                        id,
+                        name: data.name || '',
+                        value: data.value || '',
+                        type: data.type || 'percentage'
+                    };
+                    
+                    taxItems.push(taxItem);
+                    return taxItem;
+                };
+                
+                // Function to render a tax item
+                const renderTaxItem = (taxItem) => {
+                    const taxItemEl = document.createElement('div');
+                    taxItemEl.className = 'tax-item border rounded-md p-3';
+                    taxItemEl.dataset.id = taxItem.id;
+                    
+                    taxItemEl.innerHTML = `
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="font-medium">Tax Configuration</div>
+                            <button class="remove-tax-btn text-gray-400 hover:text-red-500 ${taxItems.length <= 1 ? 'hidden' : ''}">
+                                        <i class="ph ph-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                        <label class="block text-sm text-gray-600 mb-1">Tax Name</label>
+                                        <input 
+                                            type="text" 
+                                    class="tax-name-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" 
+                                            placeholder="e.g. GST" 
+                                    value="${taxItem.name}"
+                                        />
+                                    </div>
+                                    <div>
+                                <label class="block text-sm text-gray-600 mb-1">Tax Value</label>
+                                        <input 
+                                            type="number" 
+                                    class="tax-value-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500" 
+                                            placeholder="e.g. 18" 
+                                            min="0" 
+                                            max="100" 
+                                    value="${taxItem.value}"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-gray-600 mb-1">Type</label>
+                                        <select 
+                                    class="tax-type-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                                        >
+                                    <option value="percentage" ${taxItem.type === 'percentage' ? 'selected' : ''}>Percentage (%)</option>
+                                    <option value="fixed" ${taxItem.type === 'fixed' ? 'selected' : ''}>Fixed Amount (₹)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                    `;
+                    
+                    // Add event listener for remove button
+                    const removeBtn = taxItemEl.querySelector('.remove-tax-btn');
+                    if (removeBtn) {
+                        removeBtn.addEventListener('click', () => {
+                            taxItems = taxItems.filter(item => item.id !== taxItem.id);
+                            taxItemEl.remove();
+                            
+                            // Show/hide remove buttons based on number of tax items
+                            if (taxItems.length <= 1) {
+                                document.querySelectorAll('.remove-tax-btn').forEach(btn => {
+                                    btn.classList.add('hidden');
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Add event listeners to update tax item data
+                    const nameInput = taxItemEl.querySelector('.tax-name-input');
+                    const valueInput = taxItemEl.querySelector('.tax-value-input');
+                    const typeInput = taxItemEl.querySelector('.tax-type-input');
+                    
+                    nameInput.addEventListener('input', () => {
+                        const index = taxItems.findIndex(item => item.id === taxItem.id);
+                        if (index !== -1) {
+                            taxItems[index].name = nameInput.value;
+                        }
+                    });
+                    
+                    valueInput.addEventListener('input', () => {
+                        const index = taxItems.findIndex(item => item.id === taxItem.id);
+                        if (index !== -1) {
+                            taxItems[index].value = valueInput.value;
+                        }
+                    });
+                    
+                    typeInput.addEventListener('change', () => {
+                        const index = taxItems.findIndex(item => item.id === taxItem.id);
+                        if (index !== -1) {
+                            taxItems[index].type = typeInput.value;
+                        }
+                    });
+                    
+                    return taxItemEl;
+                };
+                
+                // Function to add a new tax item
+                const addTaxItem = (data = {}) => {
+                    const taxItem = createTaxItem(data);
+                    const taxItemEl = renderTaxItem(taxItem);
+                    taxConfigContainer.appendChild(taxItemEl);
+                    
+                    // Show remove buttons if there are multiple tax items
+                    if (taxItems.length > 1) {
+                        document.querySelectorAll('.remove-tax-btn').forEach(btn => {
+                            btn.classList.remove('hidden');
+                        });
+                    }
+                };
+                
+                // Add default tax item
+                addTaxItem({ name: 'GST', value: '18', type: 'percentage' });
+                
+                // Add event listener for add tax button
+                addTaxBtn.addEventListener('click', () => {
+                    addTaxItem();
+                });
 
                 // Validation function
                 const validateForm = () => {
-                    if (!taxNameInput.value.trim()) {
-                        errorContainer.textContent = 'Tax name is required';
+                    // Reset error
+                    errorContainer.classList.add('hidden');
+                    errorContainer.textContent = '';
+                    
+                    // Check if there are any tax items
+                    if (taxItems.length === 0) {
+                        errorContainer.textContent = 'Please add at least one tax configuration';
                         errorContainer.classList.remove('hidden');
                         return false;
                     }
 
-                    const taxValue = parseFloat(taxValueInput.value);
-                    if (isNaN(taxValue) || taxValue < 0 || taxValue > 100) {
-                        errorContainer.textContent = 'Please enter a valid tax value between 0 and 100';
+                    // Validate each tax item
+                    for (let i = 0; i < taxItems.length; i++) {
+                        const taxItem = taxItems[i];
+                        
+                        if (!taxItem.name.trim()) {
+                            errorContainer.textContent = `Tax name is required for item #${i + 1}`;
                         errorContainer.classList.remove('hidden');
                         return false;
+                        }
+                        
+                        const taxValue = parseFloat(taxItem.value);
+                        if (isNaN(taxValue) || taxValue < 0) {
+                            errorContainer.textContent = `Please enter a valid tax value for ${taxItem.name}`;
+                            errorContainer.classList.remove('hidden');
+                            return false;
+                        }
+                        
+                        if (taxItem.type === 'percentage' && taxValue > 100) {
+                            errorContainer.textContent = `Percentage value cannot exceed 100% for ${taxItem.name}`;
+                            errorContainer.classList.remove('hidden');
+                            return false;
+                        }
                     }
 
                     return true;
@@ -2192,13 +2329,18 @@ function Dashboard() {
                             Updating...
                         `;
 
-                        // Prepare tax data
-                        const taxCharge = {
-                            name: taxNameInput.value.trim(),
-                            value: parseFloat(taxValueInput.value),
-                            type: taxTypeInput.value
-                        };
+                        // Prepare tax charges
+                        const taxCharges = taxItems.map(item => ({
+                            name: item.name.trim(),
+                            value: item.type === 'percentage' ? `${parseFloat(item.value)}%` : parseFloat(item.value),
+                            type: item.type,
+                            inclusive: false
+                        }));
 
+                        // Add timestamp and hashtag for tracking bulk tax updates
+                        const updateTimestamp = new Date().toISOString();
+                        const updateHashtag = `#BulkTaxUpdate_${Math.floor(Date.now() / 1000)}`;
+                        
                         // Get all products for this seller
                         const productsSnapshot = await window.sdk.db.collection("Product")
                             .where("sellerId", "==", seller.id)
@@ -2213,13 +2355,35 @@ function Dashboard() {
                         productsSnapshot.forEach(doc => {
                             const productData = doc.data();
 
-                            // Replace existing tax charges with the new one
-                            productData.charges = [taxCharge];
+                            // Replace existing tax charges with the new ones
+                            productData.charges = taxCharges;
+                            
+                            // Add metadata for bulk tax update
+                            productData.taxUpdateInfo = {
+                                timestamp: updateTimestamp,
+                                hashtag: updateHashtag,
+                                isFromBulkUpdate: true
+                            };
 
                             // Update the product in the batch
-                            batch.update(doc.ref, { charges: productData.charges });
+                            batch.update(doc.ref, { 
+                                charges: productData.charges,
+                                taxUpdateInfo: productData.taxUpdateInfo
+                            });
                             successCount++;
                         });
+
+                        // Store the bulk tax update info in seller profile for reference
+                        if (seller && seller.id) {
+                            const sellerRef = window.sdk.profile;
+                            batch.update(sellerRef, {
+                                lastBulkTaxUpdate: {
+                                    timestamp: updateTimestamp,
+                                    hashtag: updateHashtag,
+                                    taxes: taxCharges
+                                }
+                            });
+                        }
 
                         // Commit all updates
                         await batch.commit();

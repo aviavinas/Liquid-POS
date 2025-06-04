@@ -1705,10 +1705,21 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
 // OrderView Component
 function OrderView({ order, tableId, variant }) {
     // Calculate served items
-    const totalItems = order.items?.reduce((sum, item) => sum + (item.quantity || item.qnt || 1), 0) || 0;
-    const servedItems = order.items?.filter(item => item.served).reduce((sum, item) => sum + (item.quantity || item.qnt || 1), 0) || 0;
-    const progress = totalItems > 0 ? servedItems / totalItems : 0;
-    const progressPercent = Math.round(progress * 100);
+    const servedItems = order.items?.filter(item => item.served).length || 0;
+    const totalItems = order.items?.length || 0;
+    const progressPercent = totalItems > 0 ? (servedItems / totalItems) * 100 : 0;
+
+    // Handle instructions change
+    const handleInstructionsChange = async (value) => {
+        try {
+            // Update the order in Firestore
+            await window.sdk.db.collection("Orders").doc(order.id).update({
+                instructions: value
+            });
+        } catch (error) {
+            console.error("Error updating instructions:", error);
+        }
+    };
 
     // Format date using the patterns from DateModifiers extension
     const formatTinyDateTime = (date) => {
@@ -1931,7 +1942,7 @@ function OrderView({ order, tableId, variant }) {
                         btError.message.includes("cancelled by user") ||
                         btError.name === "NotFoundError") {
                         showToast("Bluetooth printing cancelled by user.", "info");
-                        userCancelledBluetooth = true; // Mark that user actively cancelled
+                        userCancelledBluetooth = true; // Mark that user actively cancelled.
                         // Do not automatically fall back if user explicitly cancelled.
                         // UI should ideally give option to print later or complete without printing.
                     } else {
@@ -2458,6 +2469,24 @@ function OrderView({ order, tableId, variant }) {
                 ))}
             </div>
 
+            {/* Special Instructions */}
+            <div className="p-4 border-t border-pink-100">
+                <div className="space-y-2">
+                    <label htmlFor="special-instructions" className="block font-medium text-gray-700 flex items-center">
+                        <i className="ph ph-note-pencil text-red-500 mr-1.5"></i>
+                        Special Instructions
+                    </label>
+                    <textarea
+                        id="special-instructions"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-red-500 focus:border-red-500 text-sm"
+                        placeholder="Add any special instructions for this order..."
+                        rows="2"
+                        value={order.instructions || ''}
+                        onChange={(e) => handleInstructionsChange(e.target.value)}
+                    ></textarea>
+                </div>
+            </div>
+
             {/* Subtotal */}
             <div className="p-4 border-t border-pink-100">
                 <div className="flex justify-between items-center">
@@ -2725,7 +2754,7 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
 
 // ProductFormModal updated with consistent layout and slide-in behavior
 function ProductFormModal({ isOpen, onClose, product = null }) {
-    // State definitions remain the same...
+    // Add addons state
     const [formData, setFormData] = React.useState({
         id: '',
         title: '',
@@ -2739,6 +2768,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
         stock: 0,
         barcode: '',
         priceVariants: [],
+        addons: [], // Add this line for addons
     });
 
     const [recipeItems, setRecipeItems] = React.useState([]);
@@ -2798,6 +2828,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                 stock: product?.stock || 0,
                 barcode: product?.barcode || '',
                 priceVariants: product?.priceVariants || [],
+                addons: product?.addons || [], // Add this line for addons
             });
 
             setRecipeItems(product?.recipeItems || []);
@@ -3006,39 +3037,79 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             return;
         }
 
+        // Validate numeric fields
+        if (isNaN(Number(formData.price)) || Number(formData.price) < 0) {
+            setError('Please enter a valid selling price.');
+            return;
+        }
+
+        if (isNaN(Number(formData.mrp)) || Number(formData.mrp) < 0) {
+            setError('Please enter a valid MRP.');
+            return;
+        }
+
+        // Validate addons
+        const invalidAddons = formData.addons.filter(addon => 
+            addon.name.trim() !== '' && (isNaN(Number(addon.price)) || Number(addon.price) < 0)
+        );
+        if (invalidAddons.length > 0) {
+            setError('Please enter valid prices for all add-ons.');
+            return;
+        }
+
         setUploading(true);
         setError('');
 
         try {
             // Create product data with combined fields
             const productData = {
-                title: formData.title,
-                desc: formData.desc,
+                title: formData.title.trim(),
+                desc: formData.desc.trim(),
                 cat: formData.cat,
                 price: Number(formData.price),
                 mrp: Number(formData.mrp),
                 active: formData.active,
                 veg: formData.veg,
-                imgs: formData.imgs,
-                barcode: formData.barcode,
-                stock: formData.stock,
-                priceVariants: formData.priceVariants,
+                imgs: formData.imgs || [],
+                barcode: formData.barcode ? formData.barcode.trim() : '',
+                stock: showStockManagement ? Number(formData.stock) : undefined,
+                // Serialize price variants
+                priceVariants: (formData.priceVariants || []).map(variant => ({
+                    id: variant.id || Date.now().toString(),
+                    name: variant.name.trim(),
+                    price: Number(variant.price),
+                    isDefault: Boolean(variant.isDefault)
+                })),
+                // Serialize addons
+                addons: (formData.addons || [])
+                    .filter(addon => addon.name.trim() !== '')
+                    .map(addon => ({
+                        id: addon.id || Date.now().toString(),
+                        name: addon.name.trim(),
+                        price: Number(addon.price),
+                        inStock: Boolean(addon.inStock)
+                    })),
+                // Serialize charges
                 charges: charges.filter(charge => {
-                    // Filter out charges with empty name or zero value
                     const numValue = parseFloat(String(charge.value).replace('%', ''));
                     return charge.name.trim() !== '' && !isNaN(numValue) && numValue > 0;
                 }).map(charge => {
-                    // Process charges for storage
                     const isPercentage = String(charge.value).includes('%');
                     const numValue = parseFloat(String(charge.value).replace('%', ''));
                     return {
-                        name: charge.name,
+                        name: charge.name.trim(),
                         value: numValue,
                         type: isPercentage ? 'percentage' : 'fixed',
-                        inclusive: charge.inclusive
+                        inclusive: Boolean(charge.inclusive)
                     };
                 }),
-                recipe: recipeItems, // Save recipe items
+                // Serialize recipe items
+                recipe: (recipeItems || []).map(item => ({
+                    id: item.id || Date.now().toString(),
+                    name: item.name.trim(),
+                    quantity: Number(item.quantity),
+                    unit: item.unit
+                })),
                 updatedAt: new Date()
             };
 
@@ -3053,7 +3124,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                     productData.sellerAvatar = userProfile.photoURL || '';
                 }
             } catch (profileError) {
-                console.warn('Could not get profile data:', profileError);
+                console.error('Error getting profile data:', profileError);
                 // Continue without profile data
             }
 
@@ -3064,89 +3135,33 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                 // Update existing product
                 productId = product.id;
                 await window.sdk.db.collection("Product").doc(productId).update(productData);
-
-                // Track product update with analytics
-                if (window.sdk.analytics) {
-                    window.sdk.analytics.logEvent('product_updated', {
-                        product_id: productId,
-                        product_name: productData.title,
-                        category: productData.category || 'uncategorized'
-                    });
-                }
-
                 showToast('Product updated successfully');
             } else {
-                // Add new product
-                const docRef = await window.sdk.db.collection("Product").add({
-                    ...productData,
-                    date: new Date()
-                });
+                // Create new product
+                const docRef = await window.sdk.db.collection("Product").add(productData);
                 productId = docRef.id;
+                showToast('Product created successfully');
+            }
 
-                // Track product creation with analytics
-                if (window.sdk.analytics) {
-                    window.sdk.analytics.logEvent('product_created', {
-                        product_id: productId,
-                        product_name: productData.title,
-                        category: productData.category || 'uncategorized'
-                    });
-                }
-
-                // If we had temporary IDs in the image paths, we need to update them
-                if (formData.imgs.length > 0) {
-                    const hasTemps = formData.imgs.some(img => img.includes('temp_'));
-
-                    if (hasTemps) {
-                        // Get all images for this product
-                        try {
-                            const files = await window.sdk.storage.listFiles(`products/temp_`);
-
-                            // Move each temp file to the correct product folder
-                            for (const item of files.items) {
-                                const fullPath = item.fullPath;
-                                if (fullPath.includes('temp_')) {
-                                    // Get file content
-                                    const fileBlob = await fetch(await window.sdk.storage.getDownloadURL(fullPath)).then(r => r.blob());
-
-                                    // Upload to new location
-                                    const newPath = fullPath.replace(/products\/temp_[^\/]+\//, `products/${productId}/`);
-                                    await window.sdk.storage.uploadFile(newPath, fileBlob);
-
-                                    // Get new URL
-                                    const newUrl = await window.sdk.storage.getDownloadURL(newPath);
-
-                                    // Find old URL in product images and replace it
-                                    const oldUrl = await window.sdk.storage.getDownloadURL(fullPath);
-                                    if (productData.imgs.includes(oldUrl)) {
-                                        productData.imgs = productData.imgs.map(url =>
-                                            url === oldUrl ? newUrl : url
-                                        );
-                                    }
-
-                                    // Delete old file
-                                    await window.sdk.storage.deleteFile(fullPath);
-                                }
-                            }
-
-                            // Update product with fixed image URLs
-                            await window.sdk.db.collection("Product").doc(productId).update({
-                                imgs: productData.imgs
-                            });
-                        } catch (moveError) {
-                            console.error('Error moving temporary images:', moveError);
-                            // Continue anyway, as the product is created and images will still work
-                        }
-                    }
-                }
-
-                showToast('Product added successfully');
+            // Track analytics event
+            if (window.sdk.analytics) {
+                window.sdk.analytics.logEvent(product ? 'product_updated' : 'product_created', {
+                    product_id: productId,
+                    product_name: productData.title,
+                    category: productData.cat
+                });
             }
 
             setUploading(false);
             onClose();
+
+            // Refresh products list if the function exists
+            if (window.refreshProducts && typeof window.refreshProducts === 'function') {
+                window.refreshProducts();
+            }
         } catch (error) {
             console.error('Error saving product:', error);
-            setError('Failed to save product. Please try again.');
+            setError(`Failed to save product: ${error.message || 'Unknown error'}`);
             setUploading(false);
         }
     };
@@ -3221,6 +3236,40 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             setError('Failed to delete product. Please try again.');
             setUploading(false);
         }
+    };
+
+    // Handle addon operations
+    const handleAddAddon = () => {
+        setFormData(prev => ({
+            ...prev,
+            addons: [...prev.addons, {
+                id: Date.now().toString(),
+                name: '',
+                price: '',
+                inStock: true
+            }]
+        }));
+    };
+
+    const handleUpdateAddon = (index, field, value) => {
+        setFormData(prev => {
+            const newAddons = [...prev.addons];
+            newAddons[index] = {
+                ...newAddons[index],
+                [field]: field === 'price' ? (value === '' ? '' : Number(value)) : value
+            };
+            return {
+                ...prev,
+                addons: newAddons
+            };
+        });
+    };
+
+    const handleRemoveAddon = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            addons: prev.addons.filter((_, i) => i !== index)
+        }));
     };
 
     if (!isOpen) return null;
@@ -3472,6 +3521,78 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 variants={formData.priceVariants || []}
                                 setVariants={(variants) => handleFormChange('priceVariants', variants)}
                             />
+                        </div>
+
+                        {/* Add-ons Section */}
+                        <div>
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-gray-700">Add-ons</h3>
+                                <button
+                                    type="button"
+                                    onClick={handleAddAddon}
+                                    className="inline-flex items-center px-2.5 py-1.5 text-xs font-medium text-white bg-red-500 rounded hover:bg-red-600 transition-colors"
+                                >
+                                    <i className="ph ph-plus mr-1"></i>
+                                    Add Option
+                                </button>
+                            </div>
+                            
+                            {formData.addons.length === 0 ? (
+                                <div className="text-center py-4 bg-gray-50 rounded-lg">
+                                    <i className="ph ph-puzzle-piece text-2xl text-gray-400"></i>
+                                    <p className="text-sm text-gray-500 mt-1">No add-ons added yet</p>
+                                    <p className="text-xs text-gray-400">Add options like "Extra Cheese", "Toppings", etc.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {formData.addons.map((addon, index) => (
+                                        <div key={addon.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex-1">
+                                                <input
+                                                    type="text"
+                                                    value={addon.name}
+                                                    onChange={(e) => handleUpdateAddon(index, 'name', e.target.value)}
+                                                    placeholder="Add-on name"
+                                                    className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                />
+                                            </div>
+                                            <div className="w-24">
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-500 sm:text-sm">₹</span>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        value={addon.price}
+                                                        onChange={(e) => handleUpdateAddon(index, 'price', e.target.value)}
+                                                        placeholder="0"
+                                                        className="w-full pl-7 p-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateAddon(index, 'inStock', !addon.inStock)}
+                                                    className={`p-2 rounded-lg transition-colors ${addon.inStock ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}
+                                                    title={addon.inStock ? 'In Stock' : 'Out of Stock'}
+                                                >
+                                                    <i className="ph ph-check"></i>
+                                                </button>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveAddon(index)}
+                                                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                >
+                                                    <i className="ph ph-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Veg/Non-veg Toggle */}
@@ -3954,10 +4075,24 @@ function RecipeItems({ items, setItems }) {
 
 // Price Variants Component for the Product Form
 function PriceVariants({ variants, setVariants }) {
-    const handleAddVariant = () => {
+    // Predefined variation types
+    const commonVariations = [
+        { name: 'Half', icon: 'ph-circle-half' },
+        { name: 'Full', icon: 'ph-circle' },
+        { name: 'Regular', icon: 'ph-square' },
+        { name: 'Large', icon: 'ph-square-logo' },
+        { name: 'Small', icon: 'ph-square-half' }
+    ];
+
+    const handleAddVariant = (predefinedName = '') => {
         setVariants([
             ...variants,
-            { id: Date.now().toString(), name: '', price: '' }
+            { 
+                id: Date.now().toString(), 
+                name: predefinedName || '', 
+                price: '',
+                isDefault: variants.length === 0 // First variant is default
+            }
         ]);
     };
 
@@ -3967,6 +4102,11 @@ function PriceVariants({ variants, setVariants }) {
         if (field === 'price') {
             // Ensure price is a number
             value = value.replace(/[^0-9]/g, '');
+        }
+
+        // If updating isDefault, unset default for all other variants
+        if (field === 'isDefault' && value === true) {
+            updatedVariants.forEach(variant => variant.isDefault = false);
         }
 
         updatedVariants[index] = {
@@ -3979,6 +4119,14 @@ function PriceVariants({ variants, setVariants }) {
 
     const handleRemoveVariant = (index) => {
         const updatedVariants = [...variants];
+        const removedVariant = updatedVariants[index];
+        
+        // If removing the default variant, set the first remaining variant as default
+        if (removedVariant.isDefault && updatedVariants.length > 1) {
+            const newDefaultIndex = index === 0 ? 1 : 0;
+            updatedVariants[newDefaultIndex].isDefault = true;
+        }
+        
         updatedVariants.splice(index, 1);
         setVariants(updatedVariants);
     };
@@ -3987,21 +4135,42 @@ function PriceVariants({ variants, setVariants }) {
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-gray-700">Price Variants</h4>
-                <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="text-xs bg-red-100 text-red-600 py-1 px-2 rounded flex items-center"
-                >
-                    <i className="ph ph-plus mr-1"></i> Add Variant
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => handleAddVariant()}
+                        className="text-xs bg-red-100 text-red-600 py-1 px-2 rounded flex items-center"
+                    >
+                        <i className="ph ph-plus mr-1"></i> Custom Variant
+                    </button>
+                </div>
             </div>
+
+            {/* Quick add common variations */}
+            {variants.length === 0 && (
+                <div className="mb-4">
+                    <p className="text-sm text-gray-600 mb-2">Quick add common variations:</p>
+                    <div className="flex flex-wrap gap-2">
+                        {commonVariations.map((variation) => (
+                            <button
+                                key={variation.name}
+                                onClick={() => handleAddVariant(variation.name)}
+                                className="inline-flex items-center px-2 py-1 text-xs bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors"
+                            >
+                                <i className={`ph ${variation.icon} mr-1 text-gray-600`}></i>
+                                {variation.name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {variants.length === 0 ? (
                 <p className="text-sm text-gray-500">No price variants added yet</p>
             ) : (
                 <div className="space-y-3">
                     {variants.map((variant, index) => (
-                        <div key={index} className="flex items-center gap-2">
+                        <div key={index} className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200">
                             <div className="flex-grow">
                                 <input
                                     type="text"
@@ -4023,15 +4192,35 @@ function PriceVariants({ variants, setVariants }) {
                                     />
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => handleRemoveVariant(index)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
-                            >
-                                <i className="ph ph-trash"></i>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => handleUpdateVariant(index, 'isDefault', true)}
+                                    className={`p-1.5 rounded-lg transition-colors ${variant.isDefault ? 'bg-green-100 text-green-600' : 'text-gray-400 hover:bg-gray-100'}`}
+                                    title={variant.isDefault ? 'Default variant' : 'Set as default variant'}
+                                >
+                                    <i className="ph ph-star"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveVariant(index)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                                    title="Remove variant"
+                                >
+                                    <i className="ph ph-trash"></i>
+                                </button>
+                            </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {variants.length > 0 && (
+                <div className="mt-3 text-xs text-gray-500">
+                    <p className="flex items-center">
+                        <i className="ph ph-info mr-1"></i>
+                        Click the <i className="ph ph-star mx-1 text-gray-400"></i> icon to set a variant as default
+                    </p>
                 </div>
             )}
         </div>

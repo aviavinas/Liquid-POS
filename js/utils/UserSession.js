@@ -110,7 +110,7 @@ class UserSession {
             console.log(`Fetching user profile for seller ID: ${sid}`);
 
             // Fetch seller profile from Firestore
-            const doc = await window.sdk.db.collection('Sellers').doc(sid).get();
+            const doc = await window.sdk.profile.get();
             if (doc.exists) {
                 // We need to wait until ProfileInfo is defined
                 if (typeof window.ProfileInfo === 'undefined') {

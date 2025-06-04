@@ -18,6 +18,9 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     const [autoPrint, setAutoPrint] = React.useState(() => {
         return localStorage.getItem('autoPrintPreference') === 'true';
     });
+    // Add state for bill image generation
+    const [isGeneratingBill, setIsGeneratingBill] = React.useState(false);
+    const [billImageUrl, setBillImageUrl] = React.useState(null);
 
     // Calculate cart totals
     const cartSubTotal = React.useMemo(() => {
@@ -31,10 +34,36 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
         if (!cart) return finalCharges;
 
+        // Track if all products have the same bulk tax update hashtag
+        let commonBulkTaxHashtag = null;
+        let allProductsHaveSameHashtag = true;
+        let firstProduct = true;
+
         Object.values(cart).forEach(item => {
-            const price = item.product.price;
+            const price = item.variant ? item.variant.price : item.product.price;
             const qty = item.quantity;
-            const total = price * qty;
+            
+            // Calculate total price including add-ons
+            let addonsTotal = 0;
+            if (item.addons && item.addons.length > 0) {
+                addonsTotal = item.addons.reduce((sum, addon) => sum + addon.price, 0);
+            }
+            
+            const total = (price + addonsTotal) * qty;
+
+            // Check for bulk tax update hashtag
+            if (item.product.taxUpdateInfo && item.product.taxUpdateInfo.isFromBulkUpdate) {
+                const productHashtag = item.product.taxUpdateInfo.hashtag;
+                
+                if (firstProduct) {
+                    commonBulkTaxHashtag = productHashtag;
+                    firstProduct = false;
+                } else if (commonBulkTaxHashtag !== productHashtag) {
+                    allProductsHaveSameHashtag = false;
+                }
+            } else {
+                allProductsHaveSameHashtag = false;
+            }
 
             // Add product-specific charges - using optional chaining to prevent errors
             const productCharges = item.product.charges || [];
@@ -42,11 +71,13 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 let amount = 0;
                 let percentage = 0;
 
-                if (charge.value && charge.value.includes('%')) {
+                if (charge.type === 'percentage' || (charge.value && charge.value.toString().includes('%'))) {
                     // Percentage charge
-                    const value = charge.value.replace('%', '').trim();
-                    if (value) {
-                        percentage = parseFloat(value);
+                    if (charge.type === 'percentage') {
+                        percentage = parseFloat(charge.value) || 0;
+                    } else {
+                        const value = charge.value.toString().replace('%', '').trim();
+                        percentage = parseFloat(value) || 0;
                     }
 
                     if (charge.inclusive) {
@@ -55,27 +86,45 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         amount = (total * percentage) / 100;
                     }
 
-                    charge.name = `${charge.name.trim()} (${percentage}%)`;
+                    const chargeName = `${charge.name.trim()}${charge.name.toLowerCase().includes('%') ? '' : ` (${percentage}%)`}`;
+
+                    const existingCharge = finalCharges.find(c => c.name === chargeName);
+                    if (existingCharge) {
+                        existingCharge.value = (parseFloat(existingCharge.value) + amount).toFixed(2);
+                    } else {
+                        finalCharges.push({
+                            ...charge,
+                            name: chargeName,
+                            value: amount.toFixed(2),
+                            percentage: percentage,
+                            type: 'percentage'
+                        });
+                    }
                 } else {
                     // Fixed amount charge
-                    if (charge.value) {
-                        amount = parseFloat(charge.value);
+                    amount = parseFloat(charge.value) || 0;
+
+                    const existingCharge = finalCharges.find(c => c.name === charge.name.trim());
+                    if (existingCharge) {
+                        existingCharge.value = (parseFloat(existingCharge.value) + amount).toFixed(2);
+                    } else {
+                        finalCharges.push({
+                            ...charge,
+                            name: charge.name.trim(),
+                            value: amount.toFixed(2),
+                            type: 'fixed'
+                        });
                     }
-                }
-
-                if (amount === 0) return;
-
-                const existingCharge = finalCharges.find(c => c.name === charge.name);
-                if (existingCharge) {
-                    existingCharge.value = (parseFloat(existingCharge.value) + amount).toFixed(2);
-                } else {
-                    finalCharges.push({
-                        ...charge,
-                        value: amount.toFixed(2)
-                    });
                 }
             });
         });
+
+        // Add bulk tax update hashtag if all products have the same one
+        if (allProductsHaveSameHashtag && commonBulkTaxHashtag) {
+            finalCharges.forEach(charge => {
+                charge.bulkTaxHashtag = commonBulkTaxHashtag;
+            });
+        }
 
         return finalCharges;
     }, [cart]);
@@ -397,24 +446,24 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         let userCancelledBluetooth = false;
 
         try {
-        if (Object.keys(cart).length === 0) {
-            showToast("Your cart is empty", "error");
-            return;
-        }
+            if (Object.keys(cart).length === 0) {
+                showToast("Your cart is empty", "error");
+                return;
+            }
 
-        // CREDIT mode requires a customer selection
-        if (mode === 'CREDIT' && !customer) {
-            showToast("Please select a customer for credit purchase", "error");
-            openCustomerModal();
-            return;
-        }
+            // CREDIT mode requires a customer selection
+            if (mode === 'CREDIT' && !customer) {
+                showToast("Please select a customer for credit purchase", "error");
+                openCustomerModal();
+                return;
+            }
 
-        // Update payment mode if specified
-        if (mode) {
-            setPaymentMode(mode);
-        }
+            // Update payment mode if specified
+            if (mode) {
+                setPaymentMode(mode);
+            }
 
-        setIsProcessing(true);
+            setIsProcessing(true);
 
             // Ensure orderId exists or create a new one
             const targetOrderId = orderId || window.sdk.db.collection("Orders").doc().id;
@@ -422,24 +471,77 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
             // Convert cart items to Order items format
             const items = Object.values(cart).map(cartItem => {
+                let finalItemData;
                 try {
-                    return window.Item.fromProduct(cartItem.product, cartItem.quantity);
+                    // Attempt to use the SDK's Item.fromProduct
+                    const sdkItem = window.Item.fromProduct(cartItem.product, cartItem.quantity);
+                    finalItemData = sdkItem.data || {}; // Use .data if it exists, otherwise an empty object
+
+                    // Regardless of what Item.fromProduct does, explicitly set/override price and details
+                    let effectivePrice = cartItem.variant ? cartItem.variant.price : cartItem.product.price;
+                    finalItemData.variantId = cartItem.variant?.id || null;
+                    finalItemData.variantName = cartItem.variant?.name || null;
+
+                    let addonsTotal = 0;
+                    if (cartItem.addons && cartItem.addons.length > 0) {
+                        finalItemData.addons = cartItem.addons.map(addon => ({ id: addon.id, name: addon.name, price: addon.price }));
+                        addonsTotal = cartItem.addons.reduce((sum, addon) => sum + addon.price, 0);
+                        finalItemData.addonsTotal = addonsTotal;
+                    } else {
+                        finalItemData.addons = [];
+                        finalItemData.addonsTotal = 0;
+                    }
+                    
+                    // Crucial: Set the final price here, AFTER Item.fromProduct and AFTER calculating addons
+                    finalItemData.price = effectivePrice + addonsTotal;
+                    // Preserve original MRP and other necessary fields that Item.fromProduct might have set
+                    finalItemData.pid = finalItemData.pid || cartItem.product.id;
+                    finalItemData.title = finalItemData.title || cartItem.product.title;
+                    finalItemData.thumb = finalItemData.thumb || cartItem.product.imgs?.[0] || null;
+                    finalItemData.cat = finalItemData.cat || cartItem.product.cat || "Other";
+                    finalItemData.mrp = finalItemData.mrp || cartItem.product.mrp || cartItem.product.price;
+                    finalItemData.veg = finalItemData.veg !== undefined ? finalItemData.veg : cartItem.product.veg || false;
+                    finalItemData.served = finalItemData.served !== undefined ? finalItemData.served : false;
+                    finalItemData.qnt = finalItemData.qnt || cartItem.quantity;
+
+                    // Return an object that MOrder.fromItems expects (if it expects objects with a .data property)
+                    // Or, if MOrder.fromItems expects the data directly, this structure might need adjustment
+                    // For now, assuming Item.fromProduct returns an object that can be structured like { data: ... }
+                    return { data: finalItemData }; // This structure matches the fallback
+
                 } catch (err) {
-                    console.error("Error creating item from product:", err);
-                    // Create fallback item if fromProduct fails
-                    return {
-                        data: {
-                            pid: cartItem.product.id,
-                            title: cartItem.product.title,
-                            thumb: cartItem.product.imgs?.[0] || null,
-                            cat: cartItem.product.cat || "Other",
-                            mrp: cartItem.product.mrp || cartItem.product.price,
-                            price: cartItem.product.price,
-                            veg: cartItem.product.veg || false,
-                            served: false,
-                            qnt: cartItem.quantity
-                        }
+                    console.error("Error or issue with Item.fromProduct, using manual fallback (in handleCheckout):", err);
+                    // Fallback: Manually construct the item data
+                    let basePrice = cartItem.variant ? cartItem.variant.price : cartItem.product.price;
+                    const addonsData = (cartItem.addons && cartItem.addons.length > 0)
+                        ? cartItem.addons.map(addon => ({ id: addon.id, name: addon.name, price: addon.price }))
+                        : [];
+                    const addonsTotal = (cartItem.addons && cartItem.addons.length > 0)
+                        ? cartItem.addons.reduce((sum, addon) => sum + addon.price, 0)
+                        : 0;
+                    
+                    finalItemData = {
+                        pid: cartItem.product.id,
+                        title: cartItem.product.title,
+                        thumb: cartItem.product.imgs?.[0] || null,
+                        cat: cartItem.product.cat || "Other",
+                        mrp: cartItem.product.mrp || cartItem.product.price,
+                        price: basePrice + addonsTotal, // Final price calculation
+                        veg: cartItem.product.veg || false,
+                        served: false,
+                        qnt: cartItem.quantity,
+                        variantId: cartItem.variant?.id || null,
+                        variantName: cartItem.variant?.name || null,
+                        addons: addonsData,
+                        addonsTotal: addonsTotal
                     };
+                    
+                    // Add tax update info if present
+                    if (cartItem.product.taxUpdateInfo) {
+                        finalItemData.taxUpdateInfo = cartItem.product.taxUpdateInfo;
+                    }
+                    
+                    return { data: finalItemData }; // Consistent return structure
                 }
             });
 
@@ -454,12 +556,14 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         value: charge.value,
                         type: charge.type || 'fixed',
                         inclusive: charge.inclusive || false,
+                        bulkTaxHashtag: charge.bulkTaxHashtag || null,
                         toJson: function () {
                             return {
                                 name: this.name,
                                 value: this.value,
                                 type: this.type,
-                                inclusive: this.inclusive
+                                inclusive: this.inclusive,
+                                bulkTaxHashtag: this.bulkTaxHashtag
                             };
                         }
                     };
@@ -567,6 +671,11 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         updateData.custPhone = customer.phone;
                     }
 
+                    // Add bulk tax update information if present
+                    if (orderData.taxUpdateInfo) {
+                        updateData.taxUpdateInfo = orderData.taxUpdateInfo;
+                    }
+
                     // Add a COMPLETED status if needed
                     const now = new Date();
                     const hasCompletedStatus = existingData.status &&
@@ -616,28 +725,70 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             // Show success message for order completion
             if (checkout) {
                 if (mode === 'CREDIT') {
-                    showToast("Credit order completed!");
+                    showToast("Credit order completed!", "success");
                 } else {
-                    showToast("Order completed!");
+                    showToast("Order completed!", "success");
                 }
 
                 // After checkout is complete, handle bill printing with centralized method
                 let billPrintedSuccessfully = false;
                 
-                if (window.BluetoothPrinting) {
+                if (window.BluetoothPrinting && autoPrint) {
                     try {
                         // Use centralized print method that handles all scenarios internally
                         billPrintedSuccessfully = await window.BluetoothPrinting.printBill(targetOrderId, mode, autoPrint);
                     } catch (error) {
                         console.error("Error calling print bill:", error);
+                        // We continue even if printing fails
+                    }
+                } else if (window.BluetoothPrinting && window.UserSession?.seller?.billEnabled !== false) {
+                    // Only show the print dialog if printing is enabled and auto-print is off
+                    try {
+                        // Ask if user wants to print now
+                        if (window.ModalManager && typeof window.ModalManager.createDialog === 'function') {
+                            window.ModalManager.createDialog({
+                                title: "Print Bill?",
+                                content: `
+                                    <div class="mb-4">
+                                        <p class="mb-2">Would you like to print the bill now?</p>
+                                        <p class="text-xs text-gray-500">You can always print or share the bill later.</p>
+                                    </div>
+                                `,
+                                actions: [
+                                    {
+                                        label: "Skip Printing",
+                                        action: () => {
+                                            // Continue without printing
+                                            console.log("User skipped printing");
+                                        }
+                                    },
+                                    {
+                                        label: "Print Bill",
+                                        primary: true,
+                                        action: async () => {
+                                            try {
+                                                await window.BluetoothPrinting.printBill(targetOrderId, mode, false);
+                                            } catch (printError) {
+                                                console.error("Error printing bill:", printError);
+                                                showToast("Failed to print bill: " + (printError.message || "Unknown error"), "error");
+                                            }
+                                        }
+                                    }
+                                ]
+                            });
+                        }
+                    } catch (error) {
+                        console.error("Error showing print dialog:", error);
+                        // Continue even if showing the dialog fails
                     }
                 } else if (window.UserSession?.seller?.billEnabled !== false) {
-                    showToast("Printing service not available", "warning");
+                    // If BluetoothPrinting is not available but billing is enabled, show a message
+                    showToast("Printing service not available, but order completed successfully", "info");
                 }
 
                 // Ask the user if they'd like to enable auto-print
-                // but only ask if this preference isn't set yet
-                if (billPrintedSuccessfully && localStorage.getItem('autoPrintPreference') === null) {
+                // but only ask if this preference isn't set yet and if printing is available
+                if (billPrintedSuccessfully && localStorage.getItem('autoPrintPreference') === null && window.BluetoothPrinting) {
                     setTimeout(() => {
                         if (window.ModalManager && typeof window.ModalManager.createDialog === 'function') {
                             window.ModalManager.createDialog({
@@ -664,7 +815,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     }, 1000);
                 }
             } else {
-                showToast("Order placed successfully!");
+                showToast("Order placed successfully!", "success");
             }
 
             // Clear cart and close
@@ -757,11 +908,11 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
                     <!-- Summary -->
                     <div class="bg-gray-50 rounded-lg p-4 mb-5">
-                        <div class="flex justify-between mb-1">
-                            <span class="text-gray-600">Subtotal:</span>
+                        <div className="flex justify-between mb-1">
+                            <span className="text-gray-600">Subtotal:</span>
                             <span>₹${cartSubTotal}</span>
                         </div>
-                        <div class="flex justify-between mb-1 text-green-600">
+                        <div className="flex justify-between mb-1 text-green-600">
                             <span>Discount:</span>
                             <span id="discount-amount">
                                 - ₹${percentMode
@@ -770,7 +921,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 }
                             </span>
                         </div>
-                        <div class="flex justify-between font-medium text-lg pt-2 border-t">
+                        <div className="flex justify-between font-medium text-lg pt-2 border-t">
                             <span>Final Total:</span>
                             <span id="final-total">
                                 ₹${percentMode
@@ -920,6 +1071,696 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         }
     };
 
+    // Generate shareable bill image
+    const generateBillImage = async () => {
+        if (!orderId) {
+            showToast("No order available to share", "error");
+            return null;
+        }
+
+        setIsGeneratingBill(true);
+        
+        try {
+            // Get order data
+            const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
+            if (!orderData) {
+                showToast("Order not found", "error");
+                setIsGeneratingBill(false);
+                return null;
+            }
+
+            // Get seller information
+            const seller = window.UserSession?.seller || {};
+
+            // Check if we have a custom template
+            const hasCustomTemplate = seller.printTemplate &&
+                seller.printTemplate.bill &&
+                seller.printTemplate.bill.sections &&
+                seller.printTemplate.bill.sections.length > 0;
+
+            // Get template data if available
+            const templateData = hasCustomTemplate ? seller.printTemplate.bill : null;
+
+            // Generate HTML using PrintTemplate
+            const template = new window.BluetoothPrinting.PrintTemplate({
+                type: 'bill',
+                orderData: orderData,
+                seller: seller,
+                templateData: templateData
+            });
+            const receiptHtml = template.toHTML();
+
+            // Create an iframe to render the HTML
+            const iframe = document.createElement('iframe');
+            iframe.style.visibility = 'hidden';
+            iframe.style.position = 'absolute';
+            iframe.style.width = '400px'; // Set fixed width for consistent rendering
+            iframe.style.height = '800px'; // Set initial height
+            document.body.appendChild(iframe);
+
+            // Write HTML content to iframe
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(receiptHtml);
+            iframe.contentDocument.close();
+
+            // Wait for iframe content to load
+            await new Promise(resolve => {
+                if (iframe.contentDocument.readyState === 'complete') {
+                    resolve();
+                } else {
+                    iframe.onload = resolve;
+                    // Fallback timeout
+                    setTimeout(resolve, 1500);
+                }
+            });
+
+            // Get the receipt container element
+            const receiptContent = iframe.contentDocument.querySelector('.printer-container');
+            
+            if (!receiptContent) {
+                throw new Error("Receipt content container not found");
+            }
+            
+            // Force a layout calculation
+            receiptContent.style.margin = '0';
+            receiptContent.style.padding = '0';
+            receiptContent.style.backgroundColor = '#FFFFFF';
+            
+            // Wait for layout to stabilize
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Get content dimensions
+            const width = receiptContent.offsetWidth || 300;
+            const height = receiptContent.offsetHeight || 500;
+            
+            // Ensure modernScreenshot is available
+            if (!window.modernScreenshot) {
+                throw new Error("Modern Screenshot library not available");
+            }
+            
+            // Capture the receipt content as PNG with error handling
+            let pngDataUrl;
+            try {
+                pngDataUrl = await window.modernScreenshot.domToPng(receiptContent, {
+                    width: width,
+                    height: height,
+                    backgroundColor: '#FFFFFF',
+                    scale: 2, // Higher resolution for better quality
+                });
+            } catch (screenshotError) {
+                console.error("Error capturing screenshot:", screenshotError);
+                throw new Error("Failed to generate bill image: " + (screenshotError.message || "Screenshot error"));
+            }
+            
+            // Clean up
+            document.body.removeChild(iframe);
+            
+            // Set the bill image URL
+            setBillImageUrl(pngDataUrl);
+            showToast("Bill image generated successfully", "success");
+            return pngDataUrl;
+        } catch (error) {
+            console.error("Error generating bill image:", error);
+            showToast("Failed to generate bill image: " + (error.message || "Unknown error"), "error");
+            return null;
+        } finally {
+            setIsGeneratingBill(false);
+        }
+    };
+
+    // Helper function to convert data URL to Blob
+    const dataURLtoBlob = (dataURL) => {
+        if (!dataURL || typeof dataURL !== 'string' || !dataURL.startsWith('data:')) {
+            console.error("Invalid dataURL provided to dataURLtoBlob:", dataURL);
+            throw new Error("Invalid data URL format");
+        }
+
+        try {
+            const arr = dataURL.split(',');
+            if (arr.length < 2) {
+                throw new Error("Invalid data URL format: missing comma separator");
+            }
+
+            const mimeMatch = arr[0].match(/:(.*?);/);
+            if (!mimeMatch || !mimeMatch[1]) {
+                throw new Error("Invalid data URL format: cannot extract MIME type");
+            }
+
+            const mime = mimeMatch[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            
+            return new Blob([u8arr], { type: mime });
+        } catch (error) {
+            console.error("Error in dataURLtoBlob:", error);
+            throw new Error("Failed to convert data URL to Blob: " + error.message);
+        }
+    };
+
+    // Share bill via WhatsApp
+    const shareBillViaWhatsApp = async () => {
+        try {
+            // Variable to hold the image data - either from state or newly generated
+            let imageData = billImageUrl;
+            
+            if (!imageData) {
+                console.log("Bill image not available, generating now...");
+                // Generate the image and store the returned data directly
+                imageData = await generateBillImage();
+                if (!imageData) {
+                    showToast("Could not generate bill image. Please try again.", "error");
+                    return; // Exit if image generation failed
+                }
+                console.log("Bill image generated successfully");
+                
+                // No need to wait for state update since we're using the direct return value
+            }
+
+            console.log("Bill image available, proceeding with WhatsApp sharing");
+
+            // Get order details for a more descriptive message
+            const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
+            const billNo = orderData?.billNo || orderId || '';
+            const total = orderData?.total || cartTotal || 0;
+            
+            // Create a more descriptive message
+            const text = `Here is your bill #${billNo} from ${window.UserSession?.seller?.name || 'us'}.\nTotal: ₹${total.toFixed(2)}\nThank you for your business!`;
+            
+            // Validate imageData before proceeding
+            if (!imageData || typeof imageData !== 'string' || !imageData.startsWith('data:')) {
+                console.error("Invalid image data:", imageData);
+                showToast("Invalid bill image format. Please try again.", "error");
+                return;
+            }
+            
+            // Create a blob from the data URL for sharing
+            let blob;
+            try {
+                blob = dataURLtoBlob(imageData);
+                if (!blob) {
+                    throw new Error("Failed to create blob from image data");
+                }
+            } catch (blobError) {
+                console.error("Error creating blob:", blobError);
+                showToast("Failed to process bill image. Please try again.", "error");
+                return;
+            }
+            
+            const file = new File([blob], `bill-${billNo}.png`, { type: "image/png" });
+            
+            // First try Web Share API if available - this can share both text and image on supported platforms
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Your Bill',
+                        text: text
+                    });
+                    showToast("Bill shared successfully", "success");
+                    return; // Exit if successful
+                } catch (shareError) {
+                    console.log("Web Share API failed, falling back to WhatsApp link", shareError);
+                    // Continue to fallback methods
+                }
+            }
+            
+            // More reliable desktop detection - check for touch support and screen size
+            const isDesktop = (window.innerWidth > 1024 && !('ontouchstart' in window)) || 
+                             !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            // If Web Share API is not available or failed, show a modal with options
+            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+                // Save the bill image first for easy access
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageData; // Use our local imageData variable instead of billImageUrl
+                downloadLink.download = `bill-${billNo}.png`;
+                
+                // Create modal content with specific WhatsApp Web instructions for desktop
+                const modalContent = `
+                    <div class="text-center">
+                        <div class="mb-4">
+                            <img src="${imageData}" alt="Bill" class="max-w-full h-auto mx-auto border rounded-lg shadow-sm" style="max-height: 300px;" />
+                        </div>
+                        ${isDesktop ? `
+                        <div class="mb-4 bg-green-50 p-3 rounded-lg text-left">
+                            <h4 class="font-medium text-green-800 mb-2">WhatsApp Web Sharing Guide:</h4>
+                            <div class="flex items-center justify-center mb-3">
+                                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                                    <span class="text-green-800 font-bold">1</span>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium">Download the bill image first</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center mb-3">
+                                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                                    <span class="text-green-800 font-bold">2</span>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium">Copy the message text below</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-center">
+                                <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mr-2">
+                                    <span class="text-green-800 font-bold">3</span>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium">Open WhatsApp Web and send both</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-4 bg-gray-50 p-3 rounded-lg">
+                            <p class="text-sm text-gray-600 mb-2">Message text (click to copy):</p>
+                            <div id="copy-text-area" class="text-sm bg-white p-3 rounded border cursor-pointer text-left flex items-center justify-between">
+                                <span>${text.replace(/\n/g, '<br>')}</span>
+                                <span class="text-blue-500 ml-2"><i class="ph ph-copy"></i></span>
+                            </div>
+                            <div id="copy-success" class="text-xs text-green-600 mt-1 hidden">
+                                <i class="ph ph-check"></i> Copied to clipboard!
+                            </div>
+                        </div>
+                        ` : `
+                        <p class="mb-4 text-gray-700">WhatsApp can't directly attach images from web apps. Please choose one of these options:</p>
+                        `}
+                        <div class="space-y-3">
+                            <button id="download-then-share" class="w-full py-2.5 bg-green-500 text-white rounded-lg flex items-center justify-center hover:bg-green-600 transition-colors">
+                                <i class="ph ph-download mr-2"></i>
+                                ${isDesktop ? 'Step 1: Download Bill Image' : 'Download bill image first'}
+                            </button>
+                            ${isDesktop ? `
+                            <button id="copy-message" class="w-full py-2.5 bg-blue-500 text-white rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors">
+                                <i class="ph ph-clipboard-text mr-2"></i>
+                                Step 2: Copy Message Text
+                            </button>
+                            <button id="open-whatsapp-web" class="w-full py-2.5 bg-green-600 text-white rounded-lg flex items-center justify-center hover:bg-green-700 transition-colors">
+                                <i class="ph ph-whatsapp-logo mr-2"></i>
+                                Step 3: Open WhatsApp Web
+                            </button>
+                            ` : `
+                            <button id="share-whatsapp-text" class="w-full py-2.5 bg-green-600 text-white rounded-lg flex items-center justify-center hover:bg-green-700 transition-colors">
+                                <i class="ph ph-whatsapp-logo mr-2"></i>
+                                Share text only via WhatsApp
+                            </button>
+                            `}
+                        </div>
+                        ${isDesktop ? `
+                        <div class="mt-4 pt-3 border-t border-gray-200">
+                            <div class="bg-blue-50 p-3 rounded-lg text-left">
+                                <h5 class="font-medium text-blue-800 mb-2">How to attach the image in WhatsApp Web:</h5>
+                                <ol class="text-sm text-blue-700 space-y-1 list-decimal pl-4">
+                                    <li>In WhatsApp Web, click the <i class="ph ph-paperclip"></i> attachment icon</li>
+                                    <li>Select "Photos & Videos"</li>
+                                    <li>Navigate to your Downloads folder</li>
+                                    <li>Select the bill image you just downloaded</li>
+                                    <li>Paste the copied message text</li>
+                                    <li>Click send</li>
+                                </ol>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                window.ModalManager.createCenterModal({
+                    title: 'Share Bill via WhatsApp',
+                    content: modalContent,
+                    onShown: (modalControl) => {
+                        // Set up download button
+                        const downloadBtn = document.getElementById('download-then-share');
+                        if (downloadBtn) {
+                            downloadBtn.addEventListener('click', () => {
+                                try {
+                                    // Download the image
+                                    document.body.appendChild(downloadLink);
+                                    downloadLink.click();
+                                    document.body.removeChild(downloadLink);
+                                    
+                                    // Show toast
+                                    showToast("Bill image downloaded successfully", "success");
+                                    
+                                    // Highlight the next step for desktop users
+                                    if (isDesktop) {
+                                        const copyBtn = document.getElementById('copy-message');
+                                        if (copyBtn) {
+                                            copyBtn.classList.add('animate-pulse');
+                                            setTimeout(() => {
+                                                copyBtn.classList.remove('animate-pulse');
+                                            }, 2000);
+                                        }
+                                        
+                                        // Mark this step as completed
+                                        downloadBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+                                        downloadBtn.classList.add('bg-gray-400');
+                                        downloadBtn.innerHTML = '<i class="ph ph-check mr-2"></i> Image Downloaded';
+                                    } else {
+                                        // For mobile, continue with opening WhatsApp
+                                        const customerPhone = customer?.phone || '';
+                                        let whatsappUrl;
+                                        
+                                        if (customerPhone && customerPhone.trim()) {
+                                            // Format phone number - remove non-digits
+                                            const phoneNumber = customerPhone.replace(/\D/g, '');
+                                            whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
+                                        } else {
+                                            // No phone number, use general link
+                                            whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                        }
+                                        
+                                        // Open WhatsApp after a short delay
+                                        setTimeout(() => {
+                                            window.open(whatsappUrl, '_blank');
+                                            modalControl.close();
+                                        }, 1000);
+                                    }
+                                } catch (err) {
+                                    console.error("Error downloading image:", err);
+                                    showToast("Failed to download image. Please try again.", "error");
+                                }
+                            });
+                        }
+                        
+                        // Set up copy message button for desktop
+                        if (isDesktop) {
+                            const copyMessageBtn = document.getElementById('copy-message');
+                            if (copyMessageBtn) {
+                                copyMessageBtn.addEventListener('click', () => {
+                                    try {
+                                        navigator.clipboard.writeText(text)
+                                            .then(() => {
+                                                showToast("Message copied to clipboard", "success");
+                                                
+                                                // Show visual feedback
+                                                const copySuccess = document.getElementById('copy-success');
+                                                if (copySuccess) {
+                                                    copySuccess.classList.remove('hidden');
+                                                    setTimeout(() => {
+                                                        copySuccess.classList.add('hidden');
+                                                    }, 2000);
+                                                }
+                                                
+                                                // Mark this step as completed
+                                                copyMessageBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                                                copyMessageBtn.classList.add('bg-gray-400');
+                                                copyMessageBtn.innerHTML = '<i class="ph ph-check mr-2"></i> Message Copied';
+                                                
+                                                // Highlight the next step
+                                                const whatsappBtn = document.getElementById('open-whatsapp-web');
+                                                if (whatsappBtn) {
+                                                    whatsappBtn.classList.add('animate-pulse');
+                                                    setTimeout(() => {
+                                                        whatsappBtn.classList.remove('animate-pulse');
+                                                    }, 2000);
+                                                }
+                                            })
+                                            .catch(err => {
+                                                console.error('Failed to copy text: ', err);
+                                                showToast("Failed to copy text. Please try selecting and copying manually.", "error");
+                                            });
+                                    } catch (err) {
+                                        console.error("Error copying message:", err);
+                                        showToast("Failed to copy message. Please try manually.", "error");
+                                    }
+                                });
+                            }
+                            
+                            // Set up copy text area functionality
+                            const copyTextArea = document.getElementById('copy-text-area');
+                            const copySuccess = document.getElementById('copy-success');
+                            if (copyTextArea && copySuccess) {
+                                copyTextArea.addEventListener('click', () => {
+                                    navigator.clipboard.writeText(text)
+                                        .then(() => {
+                                            copySuccess.classList.remove('hidden');
+                                            copyTextArea.classList.add('bg-green-50', 'border-green-200');
+                                            
+                                            // Mark the copy button as completed
+                                            const copyMessageBtn = document.getElementById('copy-message');
+                                            if (copyMessageBtn) {
+                                                copyMessageBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                                                copyMessageBtn.classList.add('bg-gray-400');
+                                                copyMessageBtn.innerHTML = '<i class="ph ph-check mr-2"></i> Message Copied';
+                                            }
+                                            
+                                            setTimeout(() => {
+                                                copySuccess.classList.add('hidden');
+                                                copyTextArea.classList.remove('bg-green-50', 'border-green-200');
+                                            }, 2000);
+                                        })
+                                        .catch(err => {
+                                            console.error('Failed to copy text: ', err);
+                                            showToast("Failed to copy text. Please try selecting and copying manually.", "error");
+                                        });
+                                });
+                            }
+                        }
+                        
+                        // Set up WhatsApp Web button for desktop
+                        if (isDesktop) {
+                            const openWhatsAppBtn = document.getElementById('open-whatsapp-web');
+                            if (openWhatsAppBtn) {
+                                openWhatsAppBtn.addEventListener('click', () => {
+                                    try {
+                                        // Check if customer phone is available
+                                        const customerPhone = customer?.phone || '';
+                                        let whatsappUrl;
+                                        
+                                        if (customerPhone && customerPhone.trim()) {
+                                            // Format phone number - remove non-digits
+                                            const phoneNumber = customerPhone.replace(/\D/g, '');
+                                            whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
+                                        } else {
+                                            // No phone number, just open WhatsApp Web
+                                            whatsappUrl = 'https://web.whatsapp.com/';
+                                        }
+                                        
+                                        window.open(whatsappUrl, '_blank');
+                                        
+                                        // Mark this step as completed
+                                        openWhatsAppBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                                        openWhatsAppBtn.classList.add('bg-gray-400');
+                                        openWhatsAppBtn.innerHTML = '<i class="ph ph-check mr-2"></i> WhatsApp Web Opened';
+                                        
+                                        showToast("WhatsApp Web opened. Please attach the downloaded bill image.", "info");
+                                    } catch (err) {
+                                        console.error("Error opening WhatsApp Web:", err);
+                                        showToast("Failed to open WhatsApp Web. Please try manually.", "error");
+                                    }
+                                });
+                            }
+                        } else {
+                            // Set up text-only share button for mobile
+                            const shareTextBtn = document.getElementById('share-whatsapp-text');
+                            if (shareTextBtn) {
+                                shareTextBtn.addEventListener('click', () => {
+                                    try {
+                                        // Check if customer phone is available
+                                        const customerPhone = customer?.phone || '';
+                                        let whatsappUrl;
+                                        
+                                        if (customerPhone && customerPhone.trim()) {
+                                            // Format phone number - remove non-digits
+                                            const phoneNumber = customerPhone.replace(/\D/g, '');
+                                            whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
+                                        } else {
+                                            // No phone number, use general link
+                                            whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                        }
+                                        
+                                        window.open(whatsappUrl, '_blank');
+                                        modalControl.close();
+                                    } catch (err) {
+                                        console.error("Error opening WhatsApp:", err);
+                                        showToast("Failed to open WhatsApp. Please try manually.", "error");
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            } else {
+                // If modal manager is not available, fall back to basic approach
+                // Download the image first
+                try {
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = imageData; // Use our local imageData variable instead of billImageUrl
+                    downloadLink.download = `bill-${billNo}.png`;
+                    document.body.appendChild(downloadLink);
+                    downloadLink.click();
+                    document.body.removeChild(downloadLink);
+                    
+                    // Check if customer phone is available
+                    const customerPhone = customer?.phone || '';
+                    let whatsappUrl;
+                    
+                    if (customerPhone && customerPhone.trim()) {
+                        // Format phone number - remove non-digits
+                        const phoneNumber = customerPhone.replace(/\D/g, '');
+                        
+                        // Use different URLs for desktop and mobile
+                        if (isDesktop) {
+                            whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
+                            showToast("Bill image downloaded. Please attach it manually in WhatsApp Web", "info");
+                        } else {
+                            whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
+                            showToast("Bill image downloaded. Now you can attach it in WhatsApp", "success");
+                        }
+                    } else {
+                        // No phone number, use general link
+                        if (isDesktop) {
+                            whatsappUrl = 'https://web.whatsapp.com/';
+                            showToast("Bill image downloaded. Please attach it manually in WhatsApp Web", "info");
+                        } else {
+                            whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                            showToast("Bill image downloaded. Now you can attach it in WhatsApp", "success");
+                        }
+                    }
+                    
+                    // Open WhatsApp after a short delay
+                    setTimeout(() => {
+                        window.open(whatsappUrl, '_blank');
+                    }, 1000);
+                } catch (err) {
+                    console.error("Error in basic sharing approach:", err);
+                    showToast("Failed to share bill. Please try again.", "error");
+                }
+            }
+        } catch (error) {
+            console.error("Error sharing via WhatsApp:", error);
+            showToast("Failed to share bill: " + (error.message || "Unknown error"), "error");
+        }
+    };
+
+    // Share bill via SMS
+    const shareBillViaSMS = async () => {
+        if (!billImageUrl) {
+            const generatedImage = await generateBillImage();
+            if (!generatedImage) {
+                return; // Exit if image generation failed
+            }
+            // Small delay to ensure state is updated
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
+        try {
+            const customerPhone = customer?.phone || '';
+            const text = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}`;
+            
+            // Use native SMS app through URL scheme
+            const smsUrl = `sms:${customerPhone}?body=${encodeURIComponent(text)}`;
+            window.open(smsUrl, '_blank');
+            
+            // If SMS URL fails, try Web Share API as fallback
+            setTimeout(() => {
+                // Create a blob from the data URL
+                const blob = dataURLtoBlob(billImageUrl);
+                
+                // Create a File object from the Blob
+                const file = new File([blob], "bill.png", { type: "image/png" });
+                
+                // Check if Web Share API with files is supported
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Your Bill',
+                        text: text
+                    }).catch(err => {
+                        console.log("Web Share API fallback also failed:", err);
+                    });
+                }
+            }, 1000); // Give some time for the SMS app to open
+        } catch (error) {
+            console.error("Error sharing via SMS:", error);
+            showToast("Failed to share bill: " + (error.message || "Unknown error"), "error");
+        }
+    };
+
+    // Share bill via Email
+    const shareBillViaEmail = async () => {
+        if (!billImageUrl) {
+            const generatedImage = await generateBillImage();
+            if (!generatedImage) {
+                return; // Exit if image generation failed
+            }
+            // Small delay to ensure state is updated
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+
+        try {
+            const customerEmail = customer?.email || '';
+            const subject = `Your Bill from ${window.UserSession?.seller?.name || 'Restaurant'}`;
+            const body = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}. Thank you for your business!`;
+            
+            // Primary approach: Use mailto link for web email
+            const mailtoUrl = `mailto:${customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            
+            // Try to open email client
+            const newWindow = window.open(mailtoUrl, '_blank');
+            
+            // If window.open was blocked or failed, try Web Share API as fallback
+            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                console.log("Email client link failed, trying Web Share API fallback");
+                
+                // Create a blob from the data URL
+                const blob = dataURLtoBlob(billImageUrl);
+                
+                // Create a File object from the Blob
+                const file = new File([blob], "bill.png", { type: "image/png" });
+                
+                // Check if Web Share API with files is supported
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: subject,
+                        text: body
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error sharing via Email:", error);
+            showToast("Failed to share bill: " + (error.message || "Unknown error"), "error");
+        }
+    };
+
+    // Add a download function for direct download of bill image
+    const downloadBill = async () => {
+        // Variable to hold the image data - either from state or newly generated
+        let imageData = billImageUrl;
+        
+        if (!imageData) {
+            console.log("Bill image not available for download, generating now...");
+            // Generate the image and store the returned data directly
+            imageData = await generateBillImage();
+            if (!imageData) {
+                showToast("Could not generate bill image. Please try again.", "error");
+                return; // Exit if image generation failed
+            }
+            console.log("Bill image generated successfully for download");
+            // No need to wait for state update since we're using the direct return value
+        }
+
+        try {
+            // Create an anchor element for download
+            const downloadLink = document.createElement('a');
+            downloadLink.href = imageData; // Use our local imageData variable
+            downloadLink.download = `bill-${orderId || 'receipt'}.png`;
+            
+            // Append to body, click and remove
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            showToast("Bill downloaded successfully", "success");
+        } catch (error) {
+            console.error("Error downloading bill:", error);
+            showToast("Failed to download bill: " + (error.message || "Unknown error"), "error");
+        }
+    };
+
     if (Object.keys(cart).length === 0) return null;
 
     return (
@@ -1010,9 +1851,30 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="font-medium text-gray-900 text-lg">{item.product.title}</div>
+                                        
+                                        {/* Show selected variation if any */}
+                                        {item.variant && (
+                                            <div className="text-sm text-gray-600 mt-0.5">
+                                                Variation: {item.variant.name}
+                                            </div>
+                                        )}
+                                        
+                                        {/* Show selected add-ons if any */}
+                                        {item.addons && item.addons.length > 0 && (
+                                            <div className="text-sm text-gray-600 mt-0.5">
+                                                Add-ons: {item.addons.map(addon => addon.name).join(', ')}
+                                            </div>
+                                        )}
+                                        
                                         <div className="text-sm text-gray-600 mt-0.5">
-                                            {item.quantity} × ₹{item.product.price}
+                                            {item.quantity} × ₹{item.variant ? item.variant.price : item.product.price}
+                                            {item.addons && item.addons.length > 0 && (
+                                                <span className="text-gray-500">
+                                                    {' '}(+₹{item.addons.reduce((sum, addon) => sum + addon.price, 0)} add-ons)
+                                                </span>
+                                            )}
                                         </div>
+                                        
                                         {item.product.veg !== undefined && (
                                             <div className="mt-1">
                                                 <span className={`inline-block w-4 h-4 border ${item.product.veg ? 'border-green-500' : 'border-red-500'} p-0.5 rounded-sm`}>
@@ -1022,7 +1884,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         )}
                                     </div>
                                     <div className="font-medium text-right whitespace-nowrap text-red-600">
-                                        ₹{(item.quantity * item.product.price).toFixed(2)}
+                                        ₹{((item.variant ? item.variant.price : item.product.price) * item.quantity + 
+                                           (item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) * item.quantity : 0)).toFixed(2)}
                                     </div>
                                 </div>
                             ))}
@@ -1059,9 +1922,14 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     <div className="text-right">
                                         {charges.map((charge, index) => (
                                             <div key={index}>
-                                                ₹{charge.value}
+                                                {charge.name}: ₹{parseFloat(charge.value).toFixed(2)}
                                             </div>
                                         ))}
+                                        {charges.some(charge => charge.bulkTaxHashtag) && (
+                                            <div className="text-xs text-blue-500 mt-1">
+                                                Bulk Tax Update Applied
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1077,6 +1945,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                 <span>Total:</span>
                                 <span className="text-red-600">₹{cartTotal.toFixed(2)}</span>
                             </div>
+                        </div>
+
+                        {/* Print Status Indicator */}
+                        <div className="mt-2 flex items-center justify-center text-xs text-gray-500">
+                            <i className={`ph ${autoPrint ? 'ph-printer' : 'ph-printer-off'} mr-1`}></i>
+                            <span>{autoPrint ? "Auto-print enabled" : "Printing is optional"}</span>
                         </div>
 
                         {/* Customer Section */}
@@ -1382,7 +2256,54 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     </div>
                                 )}
 
-                                {/* Processing state indicator (replaces the Complete Order button) */}
+                                {/* Share bill options - Add this section */}
+                                {orderId && (
+                                    <div className="mt-4">
+                                        <h3 className="font-medium text-center text-gray-700 mb-2">Share Bill with Customer</h3>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            <button
+                                                onClick={shareBillViaWhatsApp}
+                                                disabled={isGeneratingBill}
+                                                className="bg-green-500 text-white py-2.5 px-1 rounded-lg font-medium flex flex-col items-center justify-center hover:bg-green-600 transition-colors"
+                                            >
+                                                <i className="ph ph-whatsapp-logo text-lg mb-0.5" />
+                                                <span className="text-xs">WhatsApp</span>
+                                            </button>
+                                            <button
+                                                onClick={shareBillViaSMS}
+                                                disabled={isGeneratingBill}
+                                                className="bg-blue-500 text-white py-2.5 px-1 rounded-lg font-medium flex flex-col items-center justify-center hover:bg-blue-600 transition-colors"
+                                            >
+                                                <i className="ph ph-chat-text text-lg mb-0.5" />
+                                                <span className="text-xs">Text</span>
+                                            </button>
+                                            <button
+                                                onClick={shareBillViaEmail}
+                                                disabled={isGeneratingBill}
+                                                className="bg-purple-500 text-white py-2.5 px-1 rounded-lg font-medium flex flex-col items-center justify-center hover:bg-purple-600 transition-colors"
+                                            >
+                                                <i className="ph ph-envelope text-lg mb-0.5" />
+                                                <span className="text-xs">Email</span>
+                                            </button>
+                                            <button
+                                                onClick={downloadBill}
+                                                disabled={isGeneratingBill}
+                                                className="bg-gray-600 text-white py-2.5 px-1 rounded-lg font-medium flex flex-col items-center justify-center hover:bg-gray-700 transition-colors"
+                                            >
+                                                <i className="ph ph-download text-lg mb-0.5" />
+                                                <span className="text-xs">Save</span>
+                                            </button>
+                                        </div>
+                                        {isGeneratingBill && (
+                                            <div className="mt-2 text-center text-sm text-gray-600 flex items-center justify-center">
+                                                <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                                                Generating bill image...
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Processing state indicator */}
                                 {isProcessing && (
                                     <div className="mt-3 py-3 bg-gray-100 rounded-lg text-center text-gray-700">
                                         <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>

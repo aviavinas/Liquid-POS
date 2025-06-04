@@ -315,7 +315,7 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                             </div>
                             <div>
                                 <h3 className="font-medium text-gray-900 line-clamp-1 max-w-[120px] md:max-w-[200px] text-sm md:text-base">
-                                    {order.customer?.name || "Guest Customer"}
+                                    {order.custName || "Guest Customer"}
                                 </h3>
                                 <p className="text-xs text-gray-500">
                                     {timeAgo}
@@ -462,7 +462,7 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                 </div>
                                 <div>
                                     <h3 className="font-medium text-gray-900 truncate max-w-[160px]">
-                                        {order.customer?.name || "Guest Customer"}
+                                        {order.custName || "Guest Customer"}
                                     </h3>
                                     <p className="text-xs text-gray-500 truncate max-w-[160px]">
                                         {order.customer?.phone || "No phone"}
@@ -770,7 +770,7 @@ function OrderDetailsContent({ order, modalControl }) {
                         </div>
                         <div>
                             <h3 className="font-medium text-gray-900 truncate max-w-[160px]">
-                                {order.customer?.name || "Guest Customer"}
+                                {order.custName || "Guest Customer"}
                             </h3>
                             <p className="text-xs text-gray-500 truncate max-w-[160px]">
                                 {order.customer?.phone || "No phone"}

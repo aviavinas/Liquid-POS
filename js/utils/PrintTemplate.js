@@ -357,7 +357,13 @@ class PrintTemplate {
             payMode: `${orderData.payMode || 'CASH'}`,
             timestamp: `${new Date(orderData.date?.toDate ? orderData.date.toDate() : orderData.date || new Date()).toLocaleString()}`,
             cut: '<div class="border-t border-dashed my-1 border-gray-400"></div>',
-            upiQR: orderData.upiQR ? `<div class="text-center"><i class="ph ph-qr-code text-4xl"></i></div>` : ''
+            upiQR: orderData.upiQR ? `<div class="text-center"><i class="ph ph-qr-code text-4xl"></i></div>` : '',
+            instructions: orderData.instructions ? `Instructions:\n${orderData.instructions}` : '',
+            customerName: orderData.customer?.name || orderData.custName || '',
+            customerPhone: orderData.customer?.phone || orderData.custPhone || '',
+            
+            // Add bulk tax update hashtag if present
+            bulkTaxHashtag: orderData.taxUpdateInfo?.hashtag || ''
         };
 
         // Prepare items list for both templates if items exist
@@ -385,12 +391,26 @@ class PrintTemplate {
 
             // Handle charges
             let chargesHtml = '';
+            let hasBulkTaxUpdate = false;
+            let bulkTaxHashtag = null;
+            
             if (orderData.charges && Array.isArray(orderData.charges)) {
                 orderData.charges.forEach(charge => {
                     if (charge.value && parseFloat(charge.value) !== 0) {
-                        chargesHtml += `${charge.name}: ${parseFloat(charge.value).toFixed(2)}`;
+                        chargesHtml += `${charge.name}: ${parseFloat(charge.value).toFixed(2)}\n`;
+                    }
+                    
+                    // Check if this charge has a bulk tax update hashtag
+                    if (charge.bulkTaxHashtag) {
+                        hasBulkTaxUpdate = true;
+                        bulkTaxHashtag = charge.bulkTaxHashtag;
                     }
                 });
+                
+                // Add bulk tax update information if present
+                if (hasBulkTaxUpdate && bulkTaxHashtag) {
+                    chargesHtml += `\n${bulkTaxHashtag}\n`;
+                }
             }
             variables.charges = chargesHtml;
 
@@ -497,7 +517,7 @@ class PrintTemplate {
 
         // Order details section
         sections.push(new PrintSection({
-            template: `Bill #: #billNo\nDate: #timestamp\n${orderData.custName || orderData.customer?.name ? `Customer: ${orderData.custName || orderData.customer?.name}` : ''}\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}\nOrder from: #orderSource`,
+            template: `Bill #: #billNo\nDate: #timestamp\nCustomer: #customerName\nPhone: #customerPhone\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}\nOrder from: #orderSource`,
             alignment: 'TextAlign.left',
             fontSize: 20,
             isBold: false
@@ -513,7 +533,7 @@ class PrintTemplate {
 
         // Totals section
         sections.push(new PrintSection({
-            template: `Sub Total: #subtotal\n${orderData.discount && parseFloat(orderData.discount) > 0 ? 'Discount: #discount\n' : ''}#charges\nTOTAL: #total`,
+            template: `Sub Total: #subtotal\n${orderData.discount && parseFloat(orderData.discount) > 0 ? 'Discount: #discount\n' : ''}#charges\nTOTAL: #total${orderData.taxUpdateInfo?.hashtag ? '\nTax ID: #bulkTaxHashtag' : ''}`,
             alignment: 'TextAlign.right',
             fontSize: 20,
             isBold: true
@@ -557,7 +577,7 @@ class PrintTemplate {
 
         // Order details section
         sections.push(new PrintSection({
-            template: `KOT #: #billNo\nDate: #timestamp\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}`,
+            template: `KOT #: #billNo\nDate: #timestamp\nCustomer: #customerName\nPhone: #customerPhone\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}`,
             alignment: 'TextAlign.left',
             fontSize: 20,
             isBold: false
@@ -571,15 +591,13 @@ class PrintTemplate {
             isBold: false
         }));
 
-        // Notes section if instructions exist
-        if (orderData.instructions) {
-            sections.push(new PrintSection({
-                template: `NOTES:\n${orderData.instructions.trim()}`,
-                alignment: 'TextAlign.left',
-                fontSize: 20,
-                isBold: false
-            }));
-        }
+        // Special Instructions section (only if there are instructions)
+        sections.push(new PrintSection({
+            template: `#instructions`,
+            alignment: 'TextAlign.left',
+            fontSize: 20,
+            isBold: false
+        }));
 
         return sections;
     }

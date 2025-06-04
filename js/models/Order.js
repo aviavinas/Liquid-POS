@@ -28,6 +28,7 @@ class Charge {
         this.value = data.value || 0;
         this.type = data.type || 'percentage'; // 'percentage' or 'fixed'
         this.inclusive = data.inclusive || false;
+        this.bulkTaxHashtag = data.bulkTaxHashtag || null; // Add support for bulk tax update hashtag
     }
 
     static fromJson(json) {
@@ -39,16 +40,24 @@ class Charge {
             name: this.name,
             value: this.value,
             type: this.type,
-            inclusive: this.inclusive
+            inclusive: this.inclusive,
+            bulkTaxHashtag: this.bulkTaxHashtag // Include hashtag in JSON
         };
     }
 
     // Calculate charge amount based on base price
     calculate(basePrice) {
         if (this.type === 'percentage') {
-            return (basePrice * this.value) / 100;
+            // Handle both numeric values and string values with '%'
+            let percentValue = this.value;
+            if (typeof percentValue === 'string') {
+                percentValue = parseFloat(percentValue.replace('%', '').trim()) || 0;
+            } else {
+                percentValue = parseFloat(percentValue) || 0;
+            }
+            return (basePrice * percentValue) / 100;
         }
-        return this.value;
+        return parseFloat(this.value) || 0;
     }
 }
 
@@ -60,7 +69,7 @@ class Item {
 
     // Constructor from Product
     static fromProduct(product, qnt) {
-        return new Item({
+        const itemData = {
             pid: product.id,
             title: product.title,
             thumb: product.imgs && product.imgs.length > 0 ? product.imgs[0] : null,
@@ -70,7 +79,14 @@ class Item {
             veg: product.veg,
             served: false,
             qnt: qnt
-        });
+        };
+        
+        // Include tax update information if present
+        if (product.taxUpdateInfo) {
+            itemData.taxUpdateInfo = product.taxUpdateInfo;
+        }
+        
+        return new Item(itemData);
     }
 
     // Getters
@@ -149,10 +165,23 @@ class MOrder {
         const seller = window.UserSession?.seller;
         const billNo = seller?.getBillNo ? seller.getBillNo() : Math.floor(Math.random() * 1000000);
 
+        // Check if there's a bulk tax update hashtag in the charges
+        let taxUpdateInfo = null;
+        if (charges && charges.length > 0) {
+            const bulkTaxCharge = charges.find(charge => charge.bulkTaxHashtag);
+            if (bulkTaxCharge) {
+                taxUpdateInfo = {
+                    isFromBulkUpdate: true,
+                    hashtag: bulkTaxCharge.bulkTaxHashtag,
+                    timestamp: new Date().toISOString()
+                };
+            }
+        }
+
         return new MOrder({
             id: id,
             billNo: billNo,
-            items: items.map(item => item.data),
+            items: items.map(item => item.data || item),
             sellerId: seller?.id,
             priceVariant: priceVariant,
             tableId: tableId,
@@ -172,7 +201,8 @@ class MOrder {
                 label: OrderStatus.KITCHEN,
                 date: now
             },
-            charges: charges.map(charge => charge.toJson()),
+            charges: charges.map(charge => typeof charge.toJson === 'function' ? charge.toJson() : charge),
+            taxUpdateInfo: taxUpdateInfo,
             payMode: PaymentMode.CASH,
             instructions: instructions,
             date: now

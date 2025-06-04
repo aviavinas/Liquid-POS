@@ -33,8 +33,7 @@ function ProfileProvider({ children }) {
     React.useEffect(() => {
         if (!profile?.id) return;
 
-        const unsubscribe = window.sdk.db.collection('Sellers').doc(profile.id)
-            .onSnapshot(
+        const unsubscribe = window.sdk.profile.onSnapshot(
                 (doc) => {
                     if (doc.exists) {
                         const updatedData = new ProfileInfo({
@@ -139,7 +138,7 @@ function ProfileProvider({ children }) {
             let newBillNo = 0;
 
             // Get the current seller document
-            const sellerRef = window.sdk.db.collection('Sellers').doc(profile.id);
+            const sellerRef = window.sdk.profile;
             const sellerDoc = await sellerRef.get();
 
             if (!sellerDoc.exists) return;
@@ -282,16 +281,13 @@ function ProfileProvider({ children }) {
     // Send notification
     const sendNotification = async (title, msg, { img, fcmToken } = {}) => {
         try {
-            await window.sdk.db.collection('Sellers')
-                .doc(profile.id)
-                .collection('notification')
-                .add({
-                    title,
-                    msg,
-                    img,
-                    tokens: fcmToken ? [fcmToken] : [],
-                    date: new Date()
-                });
+            await window.sdk.profile.collection('notification').add({
+                title,
+                msg,
+                img,
+                tokens: fcmToken ? [fcmToken] : [],
+                date: new Date()
+            });
 
             return true;
         } catch (err) {
@@ -307,9 +303,7 @@ function ProfileProvider({ children }) {
         try {
             const updatedTables = tables.filter(t => t.title !== tableId);
 
-            await window.sdk.db.collection('Sellers')
-                .doc(profile.id)
-                .update({ tables: updatedTables });
+            await window.sdk.profile.update({ tables: updatedTables });
 
             setTables(updatedTables);
 

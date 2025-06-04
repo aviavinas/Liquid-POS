@@ -76,23 +76,31 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
     }, [products]);
 
     // Handle adding item to cart
-    const handleAddToCart = (product) => {
+    const handleAddToCart = ({ product, quantity, variant, addons }) => {
         setCart(prevCart => {
-            const existingItem = prevCart[product.id];
+            const cartItemId = variant 
+                ? `${product.id}_${variant.id}`
+                : product.id;
+            
+            const existingItem = prevCart[cartItemId];
+            
             if (existingItem) {
                 return {
                     ...prevCart,
-                    [product.id]: {
+                    [cartItemId]: {
                         ...existingItem,
-                        quantity: existingItem.quantity + 1
+                        quantity: existingItem.quantity + (quantity || 1)
                     }
                 };
             }
+            
             return {
                 ...prevCart,
-                [product.id]: {
+                [cartItemId]: {
                     product,
-                    quantity: 1
+                    quantity: quantity || 1,
+                    variant,
+                    addons: addons || []
                 }
             };
         });
@@ -181,16 +189,33 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
             // Convert cart to order items
             const items = Object.values(cart).map(cartItem => {
                 const product = cartItem.product;
+                let effectivePrice = cartItem.variant ? cartItem.variant.price : product.price;
+                let addonsTotal = 0;
+                let addonsData = [];
+
+                if (cartItem.addons && cartItem.addons.length > 0) {
+                    addonsTotal = cartItem.addons.reduce((sum, addon) => sum + addon.price, 0);
+                    addonsData = cartItem.addons.map(addon => ({ 
+                        id: addon.id, 
+                        name: addon.name, 
+                        price: addon.price 
+                    }));
+                }
+
                 return {
                     pid: product.id,
                     title: product.title,
                     thumb: product.imgs && product.imgs.length > 0 ? product.imgs[0] : null,
                     cat: product.cat,
-                    mrp: product.mrp,
-                    price: product.price,
+                    mrp: product.mrp || product.price, // MRP should be from the base product
+                    price: effectivePrice + addonsTotal, // This is the crucial calculated price
                     veg: product.veg,
                     served: false,
-                    qnt: cartItem.quantity
+                    qnt: cartItem.quantity,
+                    variantId: cartItem.variant?.id || null,
+                    variantName: cartItem.variant?.name || null,
+                    addons: addonsData, // Store selected add-ons
+                    addonsTotal: addonsTotal // Store total price of add-ons for clarity/breakdown if needed
                 };
             });
 
@@ -442,7 +467,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                                         key={product.id}
                                         product={product}
                                         inCart={cart[product.id]?.quantity || 0}
-                                        onAdd={() => handleAddToCart(product)}
+                                        onAdd={() => handleAddToCart({ product, quantity: 1 })}
                                         onRemove={() => handleRemoveFromCart(product.id)}
                                     />
                                 ))}
@@ -481,7 +506,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                                             key={product.id}
                                             product={product}
                                             inCart={cart[product.id]?.quantity || 0}
-                                            onAdd={() => handleAddToCart(product)}
+                                            onAdd={() => handleAddToCart({ product, quantity: 1 })}
                                             onRemove={() => handleRemoveFromCart(product.id)}
                                         />
                                     ))}
@@ -505,7 +530,13 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     <div className="mb-4">
                         <div className="flex justify-between items-center">
                             <h3 className="font-medium text-gray-700">Subtotal</h3>
-                            <span className="font-medium text-red-600 text-lg">₹{Object.values(cart).reduce((sum, item) => sum + (item.product.price * item.quantity), 0)}</span>
+                            <span className="font-medium text-red-600 text-lg">
+                                ₹{Object.values(cart).reduce((sum, item) => {
+                                    const basePrice = item.variant ? item.variant.price : item.product.price;
+                                    const addonsTotal = item.addons ? item.addons.reduce((acc, addon) => acc + addon.price, 0) : 0;
+                                    return sum + (basePrice + addonsTotal) * item.quantity;
+                                }, 0).toFixed(2)}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center text-sm text-gray-500 mt-1">
                             <span>Items in cart</span>
@@ -536,7 +567,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     <RawProductPanel
                         onClose={() => setShowRawItemPanel(false)}
                         onAdd={(product) => {
-                            handleAddToCart(product);
+                            handleAddToCart({ product, quantity: 1 });
                             setShowRawItemPanel(false);
                         }}
                     />
@@ -549,112 +580,136 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
 // POS Product Card Component (renamed to avoid conflicts)
 function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
     const [addAnimation, setAddAnimation] = React.useState(false);
+    const [showOptions, setShowOptions] = React.useState(false);
+
+    // Check if product has options
+    const hasOptions = (product.priceVariants && product.priceVariants.length > 0) || 
+                      (product.addons && product.addons.length > 0);
 
     // Animation effect when adding to cart
     const handleAddWithAnimation = () => {
-        onAdd();
-        setAddAnimation(true);
-        setTimeout(() => setAddAnimation(false), 300);
+        if (hasOptions) {
+            setShowOptions(true);
+        } else {
+            onAdd({ product, quantity: 1 });
+            setAddAnimation(true);
+            setTimeout(() => setAddAnimation(false), 300);
+        }
     };
 
     return (
-        <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow transition-shadow group ${addAnimation ? 'ring-2 ring-red-400 scale-[1.02]' : ''}`}
-            style={{ transition: 'all 0.2s ease' }}>
-            {/* Make the main product area clickable for adding items */}
-            <div
-                className="cursor-pointer relative"
-                onClick={handleAddWithAnimation}
-            >
-                <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                    {product.imgs && product.imgs.length > 0 ? (
-                        <img
-                            src={product.imgs[0]}
-                            alt={product.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://via.placeholder.com/150';
-                            }}
-                        />
+        <>
+            <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow transition-shadow group ${addAnimation ? 'ring-2 ring-red-400 scale-[1.02]' : ''}`}
+                style={{ transition: 'all 0.2s ease' }}>
+                {/* Make the main product area clickable for adding items */}
+                <div
+                    className="cursor-pointer relative"
+                    onClick={handleAddWithAnimation}
+                >
+                    <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                        {product.imgs && product.imgs.length > 0 ? (
+                            <img
+                                src={product.imgs[0]}
+                                alt={product.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = 'https://via.placeholder.com/150';
+                                }}
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <i className="ph ph-image text-gray-400 text-3xl"></i>
+                            </div>
+                        )}
+                        {product.hasDiscount && (
+                            <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                                {product.discountPercent}% OFF
+                            </div>
+                        )}
+                        {product.veg !== undefined && (
+                            <div className="absolute top-2 left-2 h-6 w-6 flex items-center justify-center">
+                                <div className={`h-5 w-5 border p-0.5 bg-white shadow-sm ${product.veg ? 'border-green-500' : 'border-red-500'}`}>
+                                    <div className={`h-full w-full rounded-full ${product.veg ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Add overlay on hover */}
+                        {inCart === 0 && (
+                            <div className="absolute inset-0 bg-red-500 bg-opacity-0 flex items-center justify-center group-hover:bg-opacity-20 transition-all duration-300">
+                                <div className="bg-red-500 text-white px-3 py-1 rounded-full transform translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-md">
+                                    <i className="ph ph-plus mr-1"></i>
+                                    Add
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Badge for items in cart */}
+                        {inCart > 0 && (
+                            <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium animate-fadeIn">
+                                {inCart} in cart
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-3">
+                        <h3 className="font-medium text-gray-900 line-clamp-1">{product.title}</h3>
+                        <div className="flex items-center justify-between mt-1">
+                            <div>
+                                <span className="font-medium text-gray-800">₹{product.price}</span>
+                                {product.hasDiscount && (
+                                    <span className="text-xs text-gray-500 line-through ml-1">₹{product.mrp}</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Quantity controls */}
+                <div className="px-3 pb-3 flex justify-end items-center" onClick={(e) => e.stopPropagation()}>
+                    {inCart > 0 ? (
+                        <div className="flex items-center bg-gray-100 rounded-full px-1">
+                            <button
+                                className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRemove();
+                                }}
+                            >
+                                <i className="ph ph-minus"></i>
+                            </button>
+                            <span className="w-8 text-center font-medium">{inCart}</span>
+                            <button
+                                className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (hasOptions) {
+                                        setShowOptions(true);
+                                    } else {
+                                        handleAddWithAnimation();
+                                    }
+                                }}
+                            >
+                                <i className="ph ph-plus"></i>
+                            </button>
+                        </div>
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <i className="ph ph-image text-gray-400 text-3xl"></i>
-                        </div>
-                    )}
-                    {product.hasDiscount && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                            {product.discountPercent}% OFF
-                        </div>
-                    )}
-                    {product.veg !== undefined && (
-                        <div className="absolute top-2 left-2 h-6 w-6 flex items-center justify-center">
-                            <div className={`h-5 w-5 border p-0.5 bg-white shadow-sm ${product.veg ? 'border-green-500' : 'border-red-500'}`}>
-                                <div className={`h-full w-full rounded-full ${product.veg ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Add overlay on hover */}
-                    {inCart === 0 && (
-                        <div className="absolute inset-0 bg-red-500 bg-opacity-0 flex items-center justify-center group-hover:bg-opacity-20 transition-all duration-300">
-                            <div className="bg-red-500 text-white px-3 py-1 rounded-full transform translate-y-4 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-md">
-                                <i className="ph ph-plus mr-1"></i>
-                                Add
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Badge for items in cart */}
-                    {inCart > 0 && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium animate-fadeIn">
-                            {inCart} in cart
+                        <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm opacity-0">
+                            <i className="ph ph-check mr-1"></i> Add
                         </div>
                     )}
                 </div>
-                <div className="p-3">
-                    <h3 className="font-medium text-gray-900 line-clamp-1">{product.title}</h3>
-                    <div className="flex items-center justify-between mt-1">
-                        <div>
-                            <span className="font-medium text-gray-800">₹{product.price}</span>
-                            {product.hasDiscount && (
-                                <span className="text-xs text-gray-500 line-through ml-1">₹{product.mrp}</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
             </div>
 
-            {/* Quantity controls in a separate div to prevent click event bubbling */}
-            <div className="px-3 pb-3 flex justify-end items-center" onClick={(e) => e.stopPropagation()}>
-                {inCart > 0 ? (
-                    <div className="flex items-center bg-gray-100 rounded-full px-1">
-                        <button
-                            className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRemove();
-                            }}
-                        >
-                            <i className="ph ph-minus"></i>
-                        </button>
-                        <span className="w-8 text-center font-medium">{inCart}</span>
-                        <button
-                            className="w-7 h-7 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddWithAnimation();
-                            }}
-                        >
-                            <i className="ph ph-plus"></i>
-                        </button>
-                    </div>
-                ) : (
-                    <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-sm opacity-0">
-                        <i className="ph ph-check mr-1"></i> Add
-                    </div>
-                )}
-            </div>
-        </div>
+            {/* Product Options Modal */}
+            {showOptions && (
+                <ProductOptionsModal
+                    product={product}
+                    onClose={() => setShowOptions(false)}
+                    onAdd={onAdd}
+                />
+            )}
+        </>
     );
 }
 
@@ -739,6 +794,156 @@ function RawProductPanel({ onClose, onAdd }) {
                         onClick={createQuickProduct}
                         disabled={!isValid}
                     >
+                        Add to Cart
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// Product Options Modal Component
+function ProductOptionsModal({ product, onClose, onAdd }) {
+    const [selectedVariant, setSelectedVariant] = React.useState(null);
+    const [selectedAddons, setSelectedAddons] = React.useState([]);
+    const [quantity, setQuantity] = React.useState(1);
+
+    // Calculate total price
+    const totalPrice = React.useMemo(() => {
+        let total = selectedVariant ? selectedVariant.price : product.price;
+        const addonTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
+        return (total + addonTotal) * quantity;
+    }, [product.price, selectedVariant, selectedAddons, quantity]);
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
+            <div 
+                className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-xl"
+                onClick={e => e.stopPropagation()}
+                style={{ backgroundColor: "#fff8f8" }}
+            >
+                {/* Header */}
+                <div className="p-4 border-b flex items-center justify-between">
+                    <h3 className="font-medium text-lg text-gray-800">{product.title}</h3>
+                    <button onClick={onClose} className="p-1 hover:bg-red-50 rounded-full">
+                        <i className="ph ph-x text-red-600"></i>
+                    </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-4 max-h-[60vh] overflow-y-auto">
+                    {/* Variations Section */}
+                    {product.priceVariants && product.priceVariants.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="font-medium text-gray-700 mb-2">Select Variation</h4>
+                            <div className="space-y-2">
+                                {/* Default price option */}
+                                <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                                    <input
+                                        type="radio"
+                                        name="variant"
+                                        checked={!selectedVariant}
+                                        onChange={() => setSelectedVariant(null)}
+                                        className="form-radio text-red-500 focus:ring-red-500"
+                                    />
+                                    <span className="ml-3 flex-1">Regular</span>
+                                    <span className="text-gray-600">₹{product.price}</span>
+                                </label>
+                                
+                                {product.priceVariants.map((variant) => (
+                                    <label 
+                                        key={variant.id} 
+                                        className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="variant"
+                                            checked={selectedVariant?.id === variant.id}
+                                            onChange={() => setSelectedVariant(variant)}
+                                            className="form-radio text-red-500 focus:ring-red-500"
+                                        />
+                                        <span className="ml-3 flex-1">{variant.name}</span>
+                                        <span className="text-gray-600">₹{variant.price}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Add-ons Section */}
+                    {product.addons && product.addons.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="font-medium text-gray-700 mb-2">Add-ons</h4>
+                            <div className="space-y-2">
+                                {product.addons.map((addon) => (
+                                    <label 
+                                        key={addon.id}
+                                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
+                                            addon.inStock ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 opacity-60 cursor-not-allowed'
+                                        }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            disabled={!addon.inStock}
+                                            checked={selectedAddons.some(a => a.id === addon.id)}
+                                            onChange={() => {
+                                                if (!addon.inStock) return;
+                                                setSelectedAddons(prev => 
+                                                    prev.some(a => a.id === addon.id)
+                                                        ? prev.filter(a => a.id !== addon.id)
+                                                        : [...prev, addon]
+                                                );
+                                            }}
+                                            className="form-checkbox text-red-500 focus:ring-red-500"
+                                        />
+                                        <span className="ml-3 flex-1">{addon.name}</span>
+                                        <span className="text-gray-600">+₹{addon.price}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Quantity Section */}
+                    <div className="mb-6">
+                        <h4 className="font-medium text-gray-700 mb-2">Quantity</h4>
+                        <div className="flex items-center justify-center bg-gray-50 rounded-lg p-2">
+                            <button
+                                onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                                className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
+                            >
+                                <i className="ph ph-minus"></i>
+                            </button>
+                            <span className="mx-6 font-medium text-lg">{quantity}</span>
+                            <button
+                                onClick={() => setQuantity(prev => prev + 1)}
+                                className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
+                            >
+                                <i className="ph ph-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-4 border-t bg-white">
+                    <div className="flex items-center justify-between mb-4">
+                        <span className="text-gray-600">Total Amount</span>
+                        <span className="text-lg font-medium text-red-600">₹{totalPrice.toFixed(2)}</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            onAdd({
+                                product,
+                                quantity,
+                                variant: selectedVariant,
+                                addons: selectedAddons
+                            });
+                            onClose();
+                        }}
+                        className="w-full py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center justify-center"
+                    >
+                        <i className="ph ph-shopping-cart mr-2"></i>
                         Add to Cart
                     </button>
                 </div>
