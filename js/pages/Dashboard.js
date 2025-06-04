@@ -2342,9 +2342,7 @@ function Dashboard() {
                         const updateHashtag = `#BulkTaxUpdate_${Math.floor(Date.now() / 1000)}`;
                         
                         // Get all products for this seller
-                        const productsSnapshot = await window.sdk.db.collection("Product")
-                            .where("sellerId", "==", seller.id)
-                            .get();
+                        const productsSnapshot = await window.sdk.db.collection("Product").get();
 
                         let successCount = 0;
                         const totalProducts = productsSnapshot.size;
