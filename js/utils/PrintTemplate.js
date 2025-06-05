@@ -30,9 +30,16 @@ class PrintSection {
         Object.entries(this.variables).forEach(([key, value]) => {
             const placeholder = `#${key}`;
             if (result.includes(placeholder)) {
-                result = result.replace(new RegExp(placeholder, 'g'), value);
+                // If the value is undefined, empty string or just whitespace, replace with empty string
+                const replacement = (value === undefined || value === null || String(value).trim() === '') ? '' : value;
+                result = result.replace(new RegExp(placeholder, 'g'), replacement);
             }
         });
+
+        // Clean up any lines that only contain an empty placeholder
+        result = result.split('\n')
+            .filter(line => line.trim() !== '')
+            .join('\n');
 
         return result;
     }
@@ -222,8 +229,8 @@ class PrintTemplate {
             backgroundColor: '#FFFFFF',
         });
 
-        // Open preview window
-        this._openPreviewWindow(pngDataUrl, receiptContent);
+        // // Open preview window
+        // this._openPreviewWindow(pngDataUrl, receiptContent);
 
         // Clean up
         document.body.removeChild(iframe);
@@ -386,52 +393,53 @@ class PrintTemplate {
             // Handle discount
             const discount = orderData.discount ? parseFloat(orderData.discount) : 0;
             if (discount > 0) {
-                variables.discount = `${discount.toFixed(2)}`;
+                variables.discount = `-${discount.toFixed(2)}`;
+            } else {
+                variables.discount = '';
             }
 
             // Handle charges
             let chargesHtml = '';
             let hasBulkTaxUpdate = false;
             let bulkTaxHashtag = null;
+            let total = 0; // Initialize total variable
             
+            // Use ChargesCalculator for consistent charge calculations
             if (orderData.charges && Array.isArray(orderData.charges)) {
-                orderData.charges.forEach(charge => {
-                    if (charge.value && parseFloat(charge.value) !== 0) {
-                        chargesHtml += `${charge.name}: ${parseFloat(charge.value).toFixed(2)}\n`;
+                const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+                    subtotal, 
+                    orderData.charges, 
+                    orderData.discount || 0
+                );
+                
+                if (chargesCalculation && chargesCalculation.calculatedCharges) {
+                    chargesCalculation.calculatedCharges.forEach(charge => {
+                        chargesHtml += `${charge.displayName}: ${charge.calculatedAmount.toFixed(2)}\n`;
+                        
+                        // Check if this charge has a bulk tax update hashtag
+                        if (charge.bulkTaxHashtag) {
+                            hasBulkTaxUpdate = true;
+                            bulkTaxHashtag = charge.bulkTaxHashtag;
+                        }
+                    });
+                    
+                    // Add bulk tax update information if present
+                    if (hasBulkTaxUpdate && bulkTaxHashtag) {
+                        chargesHtml += `\n${bulkTaxHashtag}\n`;
                     }
                     
-                    // Check if this charge has a bulk tax update hashtag
-                    if (charge.bulkTaxHashtag) {
-                        hasBulkTaxUpdate = true;
-                        bulkTaxHashtag = charge.bulkTaxHashtag;
-                    }
-                });
-                
-                // Add bulk tax update information if present
-                if (hasBulkTaxUpdate && bulkTaxHashtag) {
-                    chargesHtml += `\n${bulkTaxHashtag}\n`;
+                    // Use the calculated final amount
+                    total = chargesCalculation.finalAmount;
                 }
             }
             variables.charges = chargesHtml;
 
             // Handle total
-            let total = orderData.total;
             if (!total) {
-                let calculatedTotal = subtotal;
-
-                if (orderData.charges && Array.isArray(orderData.charges)) {
-                    orderData.charges.forEach(charge => {
-                        if (charge.value) {
-                            calculatedTotal += parseFloat(charge.value);
-                        }
-                    });
-                }
-
+                total = subtotal;
                 if (orderData.discount) {
-                    calculatedTotal -= parseFloat(orderData.discount);
+                    total -= parseFloat(orderData.discount);
                 }
-
-                total = calculatedTotal;
             }
 
             variables.total = `${typeof total === 'number' ? total.toFixed(2) : total || '0.00'}`;

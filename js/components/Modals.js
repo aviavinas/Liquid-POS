@@ -1965,7 +1965,7 @@ function OrderView({ order, tableId, variant }) {
                         <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 14px;">${window.UserSession?.seller?.gstEnabled ? 'TAX INVOICE' : 'BILL/RECEIPT'}</h2>
                         <p style="text-align: center; margin:0; font-size: 12px;"><strong>${window.UserSession?.seller?.businessName || 'Your Business'}</strong></p>
                         ${window.UserSession?.seller?.address ? `<p style="text-align: center; font-size: 9px; margin:0;">${window.UserSession.seller.address}</p>` : ''}
-                        ${window.UserSessin?.seller?.phone ? `<p style="text-align: center; font-size: 9px; margin:0;">Ph: ${window.UserSession.seller.phone}</p>` : ''}
+                        ${window.UserSession?.seller?.phone ? `<p style="text-align: center; font-size: 9px; margin:0;">Ph: ${window.UserSession.seller.phone}</p>` : ''}
                         ${window.UserSession?.seller?.gstEnabled && window.UserSession?.seller?.gstIN ? `<p style="text-align: center; font-size: 9px; margin:0;">GSTIN: ${window.UserSession.seller.gstIN}</p>` : ''}
                         <hr style="border:none; border-top: 1px dashed #000; margin: 4px 0;" />
                         <div style="display:flex; justify-content:space-between; font-size:10px;"><span>Bill: ${orderData.billNo || orderData.id?.substring(0, 8) || 'N/A'}</span><span>${new Date(orderData.date?.toDate ? orderData.date.toDate() : orderData.date || new Date()).toLocaleDateString()}</span></div>
@@ -2004,17 +2004,25 @@ function OrderView({ order, tableId, variant }) {
                     }
 
                     if (orderData.charges && Array.isArray(orderData.charges)) {
-                        orderData.charges.forEach(charge => {
-                            const chargeName = charge.name || 'Charge';
-                            const chargeValue = parseFloat(charge.value) || 0;
-                            if (chargeValue !== 0) {
-                                billHtml += `<div style="display:flex; justify-content:space-between; font-size:10px;"><span>${chargeName}:</span><span>${chargeValue.toFixed(2)}</span></div>`;
-                            }
-                        });
+                        // Use ChargesCalculator for consistent charge calculations
+                        const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+                            totalAmount, 
+                            orderData.charges, 
+                            orderData.discount || 0
+                        );
+                        
+                        if (chargesCalculation && chargesCalculation.calculatedCharges) {
+                            chargesCalculation.calculatedCharges.forEach(charge => {
+                                billHtml += `<div style="display:flex; justify-content:space-between; font-size:10px;"><span>${charge.displayName}:</span><span>${charge.calculatedAmount.toFixed(2)}</span></div>`;
+                            });
+                            
+                            // Update total amount for display
+                            totalAmount = chargesCalculation.finalAmount;
+                        }
                     }
 
                     billHtml += `<hr style="border:none; border-top: 1px solid #000; margin: 4px 0;" />`;
-                    billHtml += `<div style="display:flex; justify-content:space-between; font-weight:bold; font-size: 12px;"><span>TOTAL:</span><span>${orderData.total?.toFixed(2)}</span></div>`; // Use orderData.total directly
+                    billHtml += `<div style="display:flex; justify-content:space-between; font-weight:bold; font-size: 12px;"><span>TOTAL:</span><span>${totalAmount.toFixed(2)}</span></div>`;
                     billHtml += `<hr style="border:none; border-top: 1px solid #000; margin: 4px 0;" />`;
                     billHtml += `<p style="font-size:10px;"><strong>Mode:</strong> ${orderData.payMode || 'N/A'}</p>`;
                     if (orderData.notes) billHtml += `<p style="font-size:9px;">Notes: ${orderData.notes}</p>`;
@@ -2117,7 +2125,7 @@ function OrderView({ order, tableId, variant }) {
                                     price: item.price || 0,
                                     mrp: item.mrp || item.price || 0,
                                     imgs: item.thumb ? [item.thumb] : [],
-                                    charges: [], // Initialize with empty array to prevent undefined errors
+                                    charges: item.charges || [], // Use item's charges if available
                                     cat: item.cat || 'Other',
                                     veg: item.veg || false
                                 },
@@ -2151,6 +2159,7 @@ function OrderView({ order, tableId, variant }) {
                         checkout: true,
                         orderId: order ? order.id : null,
                         priceVariant: variant,
+                        charges: order?.charges || [],
                         onClose: () => {
                             // Cleanup
                             root.unmount();
@@ -2491,8 +2500,57 @@ function OrderView({ order, tableId, variant }) {
             <div className="p-4 border-t border-pink-100">
                 <div className="flex justify-between items-center">
                     <h3 className="font-medium text-gray-700">Sub Total:</h3>
-                    <span className="font-medium text-red-500 text-lg">₹{subtotal}</span>
+                    <span className="font-medium text-red-500 text-lg">₹{subtotal.toFixed(2)}</span>
                 </div>
+                
+                {/* Use ChargesCalculator for consistent charge calculations */}
+                {(() => {
+                    // Calculate charges using the utility - ensure charges is always an array
+                    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+                        subtotal, 
+                        order.charges || [], 
+                        order.discount || 0
+                    ) || { 
+                        subtotal, 
+                        discount: order.discount || 0, 
+                        calculatedCharges: [], 
+                        finalAmount: subtotal - (order.discount || 0) 
+                    };
+                    
+                    const { calculatedCharges, finalAmount } = chargesCalculation;
+                    
+                    return (
+                        <>
+                            {/* Display charges */}
+                            {calculatedCharges && calculatedCharges.length > 0 && (
+                                <div className="mt-2 space-y-1">
+                                    {calculatedCharges.map((charge, index) => (
+                                        <div key={index} className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-600">{charge.displayName}:</span>
+                                            <span className="text-gray-800">₹{charge.calculatedAmount.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {/* Display discount if any */}
+                            {order.discount && parseFloat(order.discount) > 0 && (
+                                <div className="mt-2 flex justify-between items-center text-sm">
+                                    <span className="text-green-600">Discount:</span>
+                                    <span className="text-green-600">- ₹{parseFloat(order.discount).toFixed(2)}</span>
+                                </div>
+                            )}
+                            
+                            {/* Display total */}
+                            {(calculatedCharges && calculatedCharges.length > 0) || (order.discount && parseFloat(order.discount) > 0) ? (
+                                <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-800">Total:</h3>
+                                    <span className="font-bold text-red-500 text-lg">₹{finalAmount.toFixed(2)}</span>
+                                </div>
+                            ) : null}
+                        </>
+                    );
+                })()}
             </div>
 
             {/* Action Buttons */}

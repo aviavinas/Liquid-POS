@@ -175,6 +175,28 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
         }, 300);
     };
 
+    // Helper function to consolidate charges from all items
+    const getConsolidatedCharges = (items) => {
+        if (!items || !items.length) return [];
+        
+        // Extract all unique charges by name
+        const chargeMap = {};
+        
+        items.forEach(item => {
+            if (item.charges && Array.isArray(item.charges)) {
+                item.charges.forEach(charge => {
+                    if (charge.name) {
+                        // Use charge name as key for consolidation
+                        chargeMap[charge.name] = charge;
+                    }
+                });
+            }
+        });
+        
+        // Convert back to array
+        return Object.values(chargeMap);
+    };
+
     // Create a new order
     const createOrder = async () => {
         if (Object.values(cart).length === 0) {
@@ -215,7 +237,8 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     variantId: cartItem.variant?.id || null,
                     variantName: cartItem.variant?.name || null,
                     addons: addonsData, // Store selected add-ons
-                    addonsTotal: addonsTotal // Store total price of add-ons for clarity/breakdown if needed
+                    addonsTotal: addonsTotal, // Store total price of add-ons for clarity/breakdown if needed
+                    charges: product.charges || [] // Preserve product-specific charges
                 };
             });
 
@@ -326,7 +349,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     label: OrderStatus.KITCHEN,
                     date: now
                 },
-                charges: [],
+                charges: getConsolidatedCharges(finalItems) || window.UserSession?.seller?.charges || [],
                 payMode: PaymentMode.CASH,
                 date: now
             };

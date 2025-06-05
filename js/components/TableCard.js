@@ -413,8 +413,20 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
 // Order Details Modal Component
 function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
-    const taxAmount = totalAmount * 0.18; // Assuming 18% tax
-    const finalAmount = totalAmount + taxAmount;
+    
+    // Use ChargesCalculator for consistent charge calculations
+    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+        totalAmount, 
+        order.charges || [], 
+        order.discount || 0
+    ) || { 
+        subtotal: totalAmount, 
+        discount: order.discount || 0, 
+        calculatedCharges: [], 
+        finalAmount: totalAmount - (order.discount || 0) 
+    };
+    
+    const { calculatedCharges, finalAmount } = chargesCalculation;
 
     // Determine order status for showing appropriate actions
     const isNewOrder = order.currentStatus?.label === "PLACED";
@@ -533,12 +545,27 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Item Total</span>
-                                <span className="font-medium">₹{totalAmount}</span>
+                                <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-600">Tax (18%)</span>
-                                <span className="font-medium">₹{taxAmount.toFixed(2)}</span>
-                            </div>
+                            
+                            {/* Display each charge */}
+                            {calculatedCharges && calculatedCharges.length > 0 && calculatedCharges.map((charge, index) => {
+                                return (
+                                    <div key={index} className="flex justify-between">
+                                        <span className="text-gray-600">{charge.displayName}</span>
+                                        <span className="font-medium">₹{charge.calculatedAmount.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Display discount if any */}
+                            {order.discount > 0 && (
+                                <div className="flex justify-between text-green-600">
+                                    <span>Discount</span>
+                                    <span>- ₹{order.discount.toFixed(2)}</span>
+                                </div>
+                            )}
+                            
                             <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                                 <span className="font-medium">Grand Total</span>
                                 <span className="font-semibold text-red-600">₹{finalAmount.toFixed(2)}</span>
@@ -681,8 +708,20 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
 // Order Details Content Component for use with ModalManager
 function OrderDetailsContent({ order, modalControl }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
-    const taxAmount = totalAmount * 0.18; // Assuming 18% tax
-    const finalAmount = totalAmount + taxAmount;
+    
+    // Use ChargesCalculator for consistent charge calculations
+    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+        totalAmount, 
+        order.charges || [], 
+        order.discount || 0
+    ) || { 
+        subtotal: totalAmount, 
+        discount: order.discount || 0, 
+        calculatedCharges: [], 
+        finalAmount: totalAmount - (order.discount || 0) 
+    };
+    
+    const { calculatedCharges, finalAmount } = chargesCalculation;
 
     // Determine order status for showing appropriate actions
     const isNewOrder = order.currentStatus?.label === "PLACED";
@@ -841,12 +880,27 @@ function OrderDetailsContent({ order, modalControl }) {
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Item Total</span>
-                        <span className="font-medium">₹{totalAmount}</span>
+                        <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-gray-600">Tax (18%)</span>
-                        <span className="font-medium">₹{taxAmount.toFixed(2)}</span>
-                    </div>
+                    
+                    {/* Display each charge */}
+                    {calculatedCharges && calculatedCharges.length > 0 && calculatedCharges.map((charge, index) => {
+                        return (
+                            <div key={index} className="flex justify-between">
+                                <span className="text-gray-600">{charge.displayName}</span>
+                                <span className="font-medium">₹{charge.calculatedAmount.toFixed(2)}</span>
+                            </div>
+                        );
+                    })}
+                    
+                    {/* Display discount if any */}
+                    {order.discount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                            <span>Discount</span>
+                            <span>- ₹{order.discount.toFixed(2)}</span>
+                        </div>
+                    )}
+                    
                     <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                         <span className="font-medium">Grand Total</span>
                         <span className="font-semibold text-red-600">₹{finalAmount.toFixed(2)}</span>

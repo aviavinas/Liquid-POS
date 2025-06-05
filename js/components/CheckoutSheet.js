@@ -29,28 +29,16 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     }, [cart]);
 
     // Calculate charges (taxes, etc.)
-    const charges = React.useMemo(() => {
-        const finalCharges = [];
-
-        if (!cart) return finalCharges;
-
-        // Track if all products have the same bulk tax update hashtag
+    const chargesCalculation = React.useMemo(() => {
+        if (!cart) return { calculatedCharges: [], totalChargesAmount: 0, finalAmount: 0 };
+        
+        // Collect all product charges
+        const productCharges = [];
         let commonBulkTaxHashtag = null;
         let allProductsHaveSameHashtag = true;
         let firstProduct = true;
-
+        
         Object.values(cart).forEach(item => {
-            const price = item.variant ? item.variant.price : item.product.price;
-            const qty = item.quantity;
-            
-            // Calculate total price including add-ons
-            let addonsTotal = 0;
-            if (item.addons && item.addons.length > 0) {
-                addonsTotal = item.addons.reduce((sum, addon) => sum + addon.price, 0);
-            }
-            
-            const total = (price + addonsTotal) * qty;
-
             // Check for bulk tax update hashtag
             if (item.product.taxUpdateInfo && item.product.taxUpdateInfo.isFromBulkUpdate) {
                 const productHashtag = item.product.taxUpdateInfo.hashtag;
@@ -64,85 +52,45 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             } else {
                 allProductsHaveSameHashtag = false;
             }
-
-            // Add product-specific charges - using optional chaining to prevent errors
-            const productCharges = item.product.charges || [];
-            productCharges.forEach(charge => {
-                let amount = 0;
-                let percentage = 0;
-
-                if (charge.type === 'percentage' || (charge.value && charge.value.toString().includes('%'))) {
-                    // Percentage charge
-                    if (charge.type === 'percentage') {
-                        percentage = parseFloat(charge.value) || 0;
-                    } else {
-                        const value = charge.value.toString().replace('%', '').trim();
-                        percentage = parseFloat(value) || 0;
-                    }
-
-                    if (charge.inclusive) {
-                        amount = (total * percentage) / (100 + percentage);
-                    } else {
-                        amount = (total * percentage) / 100;
-                    }
-
-                    const chargeName = `${charge.name.trim()}${charge.name.toLowerCase().includes('%') ? '' : ` (${percentage}%)`}`;
-
-                    const existingCharge = finalCharges.find(c => c.name === chargeName);
-                    if (existingCharge) {
-                        existingCharge.value = (parseFloat(existingCharge.value) + amount).toFixed(2);
-                    } else {
-                        finalCharges.push({
-                            ...charge,
-                            name: chargeName,
-                            value: amount.toFixed(2),
-                            percentage: percentage,
-                            type: 'percentage'
-                        });
-                    }
-                } else {
-                    // Fixed amount charge
-                    amount = parseFloat(charge.value) || 0;
-
-                    const existingCharge = finalCharges.find(c => c.name === charge.name.trim());
-                    if (existingCharge) {
-                        existingCharge.value = (parseFloat(existingCharge.value) + amount).toFixed(2);
-                    } else {
-                        finalCharges.push({
-                            ...charge,
-                            name: charge.name.trim(),
-                            value: amount.toFixed(2),
-                            type: 'fixed'
-                        });
-                    }
-                }
-            });
+            
+            if (item.product.charges && item.product.charges.length > 0) {
+                productCharges.push(...item.product.charges);
+            }
         });
-
+        
+        // Consolidate charges by name
+        const consolidatedCharges = [];
+        productCharges.forEach(charge => {
+            const existingCharge = consolidatedCharges.find(c => c.name === charge.name && c.type === charge.type);
+            if (existingCharge) {
+                // For percentage charges, we don't need to sum the percentages
+                if (charge.type !== 'percentage') {
+                    existingCharge.value = (parseFloat(existingCharge.value) + parseFloat(charge.value)).toString();
+                }
+            } else {
+                consolidatedCharges.push({...charge});
+            }
+        });
+        
         // Add bulk tax update hashtag if all products have the same one
         if (allProductsHaveSameHashtag && commonBulkTaxHashtag) {
-            finalCharges.forEach(charge => {
+            consolidatedCharges.forEach(charge => {
                 charge.bulkTaxHashtag = commonBulkTaxHashtag;
             });
         }
-
-        return finalCharges;
-    }, [cart]);
-
-    const cartTotal = React.useMemo(() => {
-        let total = cartSubTotal - discount;
-
-        // Add exclusive charges
-        if (charges && charges.length > 0) {
-            charges.forEach(charge => {
-                if (!charge.inclusive && charge.value) {
-                    total += parseFloat(charge.value);
-                }
-            });
-        }
-
-        return total;
-    }, [cartSubTotal, discount, charges]);
+        
+        // Use ChargesCalculator to calculate final amounts
+        return window.ChargesCalculator && typeof window.ChargesCalculator.calculateCharges === 'function' 
+            ? window.ChargesCalculator.calculateCharges(cartSubTotal, consolidatedCharges, discount)
+            : {
+                calculatedCharges: [],
+                finalAmount: cartSubTotal - (discount || 0)
+            };
+    }, [cart, cartSubTotal, discount]);
+    
+    // Extract values from calculation
+    const { calculatedCharges, finalAmount } = chargesCalculation;
+    const cartTotal = finalAmount;
 
     // Format date properly
     const formatDate = (dateStr) => {
@@ -546,7 +494,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             });
 
             // Validate charges format
-            const validCharges = charges.map(charge => {
+            const validCharges = calculatedCharges.map(charge => {
                 if (typeof charge.toJson === 'function') {
                     return charge;
                 } else {
@@ -1916,16 +1864,16 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                             </div>
 
                             {/* Charges */}
-                            {charges && charges.length > 0 && (
+                            {calculatedCharges && calculatedCharges.length > 0 && (
                                 <div className="flex justify-between text-gray-600">
                                     <span>Tax & Charges</span>
                                     <div className="text-right">
-                                        {charges.map((charge, index) => (
+                                        {calculatedCharges.map((charge, index) => (
                                             <div key={index}>
-                                                {charge.name}: ₹{parseFloat(charge.value).toFixed(2)}
+                                                {charge.displayName}: ₹{charge.calculatedAmount.toFixed(2)}
                                             </div>
                                         ))}
-                                        {charges.some(charge => charge.bulkTaxHashtag) && (
+                                        {calculatedCharges.some(charge => charge.bulkTaxHashtag) && (
                                             <div className="text-xs text-blue-500 mt-1">
                                                 Bulk Tax Update Applied
                                             </div>
