@@ -1918,26 +1918,26 @@ function Dashboard() {
                         <div class="text-sm font-medium text-gray-700 mb-2">Insert Variable</div>
                         <div class="space-y-1">
                             ${[
-                                { name: 'businessName', label: 'Business Name' },
-                                { name: 'logo', label: 'Business Logo' },
-                                { name: 'phone', label: 'Phone Number' },
-                                { name: 'address', label: 'Address' },
-                                { name: 'storeLink', label: 'Store Website' },
-                                { name: 'gstIN', label: 'GST Number' },
-                                { name: 'billNo', label: 'Bill Number' },
-                                { name: 'orderSource', label: 'Order Source' },
-                                { name: 'payMode', label: 'Payment Mode' },
-                                { name: 'timestamp', label: 'Date & Time' },
-                                { name: 'cut', label: 'Divider Line' },
-                                { name: 'upiQR', label: 'UPI QR Code' },
-                                { name: 'itemsList', label: 'Items List (Bill)' },
-                                { name: 'kotItemsList', label: 'Items List (KOT)' },
-                                { name: 'subtotal', label: 'Subtotal' },
-                                { name: 'discount', label: 'Discount' },
-                                { name: 'charges', label: 'Additional Charges' },
-                                { name: 'total', label: 'Total Amount' },
-                                { name: 'instructions', label: 'Special Instructions' }
-                            ].map(variable => `
+                            { name: 'businessName', label: 'Business Name' },
+                            { name: 'logo', label: 'Business Logo' },
+                            { name: 'phone', label: 'Phone Number' },
+                            { name: 'address', label: 'Address' },
+                            { name: 'storeLink', label: 'Store Website' },
+                            { name: 'gstIN', label: 'GST Number' },
+                            { name: 'billNo', label: 'Bill Number' },
+                            { name: 'orderSource', label: 'Order Source' },
+                            { name: 'payMode', label: 'Payment Mode' },
+                            { name: 'timestamp', label: 'Date & Time' },
+                            { name: 'cut', label: 'Divider Line' },
+                            { name: 'upiQR', label: 'UPI QR Code' },
+                            { name: 'itemsList', label: 'Items List (Bill)' },
+                            { name: 'kotItemsList', label: 'Items List (KOT)' },
+                            { name: 'subtotal', label: 'Subtotal' },
+                            { name: 'discount', label: 'Discount' },
+                            { name: 'charges', label: 'Additional Charges' },
+                            { name: 'total', label: 'Total Amount' },
+                            { name: 'instructions', label: 'Special Instructions' }
+                        ].map(variable => `
                                 <div class="variable-item p-1 hover:bg-gray-100 rounded cursor-pointer" data-variable="${variable.name}">
                                     <span class="text-red-500">#${variable.name}</span> - ${variable.label}
                                 </div>
@@ -2138,10 +2138,10 @@ function Dashboard() {
                 const errorContainer = document.getElementById('tax-update-error-container');
                 const cancelButton = document.getElementById('cancel-tax-update-btn');
                 const saveButton = document.getElementById('save-tax-update-btn');
-                
+
                 // Keep track of tax items
                 let taxItems = [];
-                
+
                 // Function to create a new tax item
                 const createTaxItem = (data = {}) => {
                     const id = Date.now().toString();
@@ -2151,17 +2151,17 @@ function Dashboard() {
                         value: data.value || '',
                         type: data.type || 'percentage'
                     };
-                    
+
                     taxItems.push(taxItem);
                     return taxItem;
                 };
-                
+
                 // Function to render a tax item
                 const renderTaxItem = (taxItem) => {
                     const taxItemEl = document.createElement('div');
                     taxItemEl.className = 'tax-item border rounded-md p-3';
                     taxItemEl.dataset.id = taxItem.id;
-                    
+
                     taxItemEl.innerHTML = `
                                 <div class="flex items-center justify-between mb-2">
                                     <div class="font-medium">Tax Configuration</div>
@@ -2202,14 +2202,14 @@ function Dashboard() {
                                     </div>
                                 </div>
                     `;
-                    
+
                     // Add event listener for remove button
                     const removeBtn = taxItemEl.querySelector('.remove-tax-btn');
                     if (removeBtn) {
                         removeBtn.addEventListener('click', () => {
                             taxItems = taxItems.filter(item => item.id !== taxItem.id);
                             taxItemEl.remove();
-                            
+
                             // Show/hide remove buttons based on number of tax items
                             if (taxItems.length <= 1) {
                                 document.querySelectorAll('.remove-tax-btn').forEach(btn => {
@@ -2218,42 +2218,42 @@ function Dashboard() {
                             }
                         });
                     }
-                    
+
                     // Add event listeners to update tax item data
                     const nameInput = taxItemEl.querySelector('.tax-name-input');
                     const valueInput = taxItemEl.querySelector('.tax-value-input');
                     const typeInput = taxItemEl.querySelector('.tax-type-input');
-                    
+
                     nameInput.addEventListener('input', () => {
                         const index = taxItems.findIndex(item => item.id === taxItem.id);
                         if (index !== -1) {
                             taxItems[index].name = nameInput.value;
                         }
                     });
-                    
+
                     valueInput.addEventListener('input', () => {
                         const index = taxItems.findIndex(item => item.id === taxItem.id);
                         if (index !== -1) {
                             taxItems[index].value = valueInput.value;
                         }
                     });
-                    
+
                     typeInput.addEventListener('change', () => {
                         const index = taxItems.findIndex(item => item.id === taxItem.id);
                         if (index !== -1) {
                             taxItems[index].type = typeInput.value;
                         }
                     });
-                    
+
                     return taxItemEl;
                 };
-                
+
                 // Function to add a new tax item
                 const addTaxItem = (data = {}) => {
                     const taxItem = createTaxItem(data);
                     const taxItemEl = renderTaxItem(taxItem);
                     taxConfigContainer.appendChild(taxItemEl);
-                    
+
                     // Show remove buttons if there are multiple tax items
                     if (taxItems.length > 1) {
                         document.querySelectorAll('.remove-tax-btn').forEach(btn => {
@@ -2261,10 +2261,10 @@ function Dashboard() {
                         });
                     }
                 };
-                
+
                 // Add default tax item
                 addTaxItem({ name: 'GST', value: '18', type: 'percentage' });
-                
+
                 // Add event listener for add tax button
                 addTaxBtn.addEventListener('click', () => {
                     addTaxItem();
@@ -2275,7 +2275,7 @@ function Dashboard() {
                     // Reset error
                     errorContainer.classList.add('hidden');
                     errorContainer.textContent = '';
-                    
+
                     // Check if there are any tax items
                     if (taxItems.length === 0) {
                         errorContainer.textContent = 'Please add at least one tax configuration';
@@ -2286,20 +2286,20 @@ function Dashboard() {
                     // Validate each tax item
                     for (let i = 0; i < taxItems.length; i++) {
                         const taxItem = taxItems[i];
-                        
+
                         if (!taxItem.name.trim()) {
                             errorContainer.textContent = `Tax name is required for item #${i + 1}`;
-                        errorContainer.classList.remove('hidden');
-                        return false;
+                            errorContainer.classList.remove('hidden');
+                            return false;
                         }
-                        
+
                         const taxValue = parseFloat(taxItem.value);
                         if (isNaN(taxValue) || taxValue < 0) {
                             errorContainer.textContent = `Please enter a valid tax value for ${taxItem.name}`;
                             errorContainer.classList.remove('hidden');
                             return false;
                         }
-                        
+
                         if (taxItem.type === 'percentage' && taxValue > 100) {
                             errorContainer.textContent = `Percentage value cannot exceed 100% for ${taxItem.name}`;
                             errorContainer.classList.remove('hidden');
@@ -2340,7 +2340,7 @@ function Dashboard() {
                         // Add timestamp and hashtag for tracking bulk tax updates
                         const updateTimestamp = new Date().toISOString();
                         const updateHashtag = `#BulkTaxUpdate_${Math.floor(Date.now() / 1000)}`;
-                        
+
                         // Get all products for this seller
                         const productsSnapshot = await window.sdk.db.collection("Product").get();
 
@@ -2355,7 +2355,7 @@ function Dashboard() {
 
                             // Replace existing tax charges with the new ones
                             productData.charges = taxCharges;
-                            
+
                             // Add metadata for bulk tax update
                             productData.taxUpdateInfo = {
                                 timestamp: updateTimestamp,
@@ -2364,7 +2364,7 @@ function Dashboard() {
                             };
 
                             // Update the product in the batch
-                            batch.update(doc.ref, { 
+                            batch.update(doc.ref, {
                                 charges: productData.charges,
                                 taxUpdateInfo: productData.taxUpdateInfo
                             });
@@ -2587,7 +2587,7 @@ function Dashboard() {
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center">
                                     <div class="w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 rounded-lg flex items-center justify-center mr-3 shadow-sm">
-                                        <i class="ph ph-printer text-green-600 text-xl"></i>
+                                        <i class="ph ${connectedDevice.type === 'wired' ? 'ph-plug' : 'ph-bluetooth'} text-green-600 text-xl"></i>
                                     </div>
                                     <div>
                                         <h4 class="font-medium text-gray-800 flex items-center">
@@ -2596,7 +2596,12 @@ function Dashboard() {
                                                 <i class="ph ph-plug text-green-600 mr-1 text-xs"></i>Connected Now
                                             </span>
                                         </h4>
-                                        <p class="text-xs text-gray-500">${connectedDeviceId || 'Unknown ID'}</p>
+                                        <p class="text-xs text-gray-500">
+                                            ${connectedDevice.type === 'wired'
+                        ? `Address: ${connectedDevice.address || 'Unknown'}`
+                        : `ID: ${connectedDeviceId || 'Unknown'}`
+                    }
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -2614,51 +2619,65 @@ function Dashboard() {
                         ` : ''}
                         
                         ${managedPrinters.map((printer, index) => {
-                // Determine if this printer is connected - check both id and name
-                const isPrinterConnected = currentlyConnected && (
-                    (connectedDeviceId && printer.deviceId === connectedDeviceId) ||
-                    (connectedDeviceName && printer.deviceName === connectedDeviceName)
-                );
+                        // Determine if this printer is connected - check both id and name
+                        const isPrinterConnected = currentlyConnected && (
+                            (connectedDeviceId && printer.deviceId === connectedDeviceId) ||
+                            (connectedDeviceName && printer.deviceName === connectedDeviceName)
+                        );
 
-                // Skip if this is already shown as the connected printer
-                if (isPrinterConnected && currentlyConnected && connectedDevice) {
-                    return '';
-                }
+                        // Skip if this is already shown as the connected printer
+                        if (isPrinterConnected && currentlyConnected && connectedDevice) {
+                            return '';
+                        }
 
-                // Format date added or last connected date
-                let dateInfo = '';
-                if (printer.lastConnected) {
-                    const lastConnectedDate = new Date(printer.lastConnected);
-                    const now = new Date();
-                    const diffMs = now - lastConnectedDate;
-                    const diffMins = Math.round(diffMs / 60000);
-                    const diffHours = Math.round(diffMs / 3600000);
-                    const diffDays = Math.round(diffMs / 86400000);
+                        // Format date added or last connected date
+                        let dateInfo = '';
+                        if (printer.lastConnected) {
+                            const lastConnectedDate = new Date(printer.lastConnected);
+                            const now = new Date();
+                            const diffMs = now - lastConnectedDate;
+                            const diffMins = Math.round(diffMs / 60000);
+                            const diffHours = Math.round(diffMs / 3600000);
+                            const diffDays = Math.round(diffMs / 86400000);
 
-                    if (diffMins < 1) {
-                        dateInfo = `Connected just now`;
-                    } else if (diffMins < 60) {
-                        dateInfo = `Connected ${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-                    } else if (diffHours < 24) {
-                        dateInfo = `Connected ${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-                    } else {
-                        dateInfo = `Connected ${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-                    }
-                } else if (printer.dateAdded) {
-                    const addedDate = new Date(printer.dateAdded);
-                    dateInfo = `Added on ${addedDate.toLocaleDateString()}`;
-                }
+                            if (diffMins < 1) {
+                                dateInfo = `Connected just now`;
+                            } else if (diffMins < 60) {
+                                dateInfo = `Connected ${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+                            } else if (diffHours < 24) {
+                                dateInfo = `Connected ${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+                            } else {
+                                dateInfo = `Connected ${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+                            }
+                        } else if (printer.dateAdded) {
+                            const addedDate = new Date(printer.dateAdded);
+                            dateInfo = `Added on ${addedDate.toLocaleDateString()}`;
+                        }
 
-                return `
+                        // Determine printer type (for backward compatibility)
+                        const printerType = printer.type || (printer.deviceId ? 'bluetooth' : 'wired');
+                        const isBluetoothPrinter = printerType === 'bluetooth';
+
+                        // Choose icon and background color based on printer type
+                        const iconClass = isBluetoothPrinter ? 'ph-bluetooth' : 'ph-plug';
+                        const bgColorClass = isBluetoothPrinter ? 'from-blue-50 to-blue-100' : 'from-green-50 to-green-100';
+                        const textColorClass = isBluetoothPrinter ? 'text-blue-500' : 'text-green-500';
+
+                        return `
                                 <div class="printer-item bg-gradient-to-br from-white to-gray-50 border ${isPrinterConnected ? 'border-green-300 ring-1 ring-green-300' : 'border-gray-200'} rounded-lg shadow-sm p-4 transition-all hover:shadow-md" data-printer-id="${printer.id}">
                                     <div class="flex justify-between items-start mb-3">
                                         <div class="flex items-center">
-                                            <div class="w-10 h-10 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center mr-3 shadow-sm">
-                                                <i class="ph ph-printer text-red-500 text-xl"></i>
+                                            <div class="w-10 h-10 bg-gradient-to-br ${bgColorClass} rounded-lg flex items-center justify-center mr-3 shadow-sm">
+                                                <i class="ph ${iconClass} ${textColorClass} text-xl"></i>
                                             </div>
                                             <div>
                                                 <h4 class="font-medium text-gray-800">${printer.name || 'Unnamed Printer'}</h4>
-                                                <p class="text-xs text-gray-500">${printer.deviceId || 'Unknown ID'}</p>
+                                                <p class="text-xs text-gray-500">
+                                                    ${isBluetoothPrinter
+                                ? `${printer.deviceName || 'Unknown device'}`
+                                : `${printer.address || 'No address'}`
+                            }
+                                                </p>
                                                 ${dateInfo ? `<p class="text-xs text-gray-500 italic">${dateInfo}</p>` : ''}
                                             </div>
                                             ${printer.isDefault ? `<span class="ml-2 px-2 py-0.5 bg-gradient-to-r from-red-100 to-red-50 text-red-700 text-xs rounded-full flex items-center"><i class="ph ph-star-fill text-amber-500 mr-1 text-xs"></i>Default</span>` : ''}
@@ -2701,7 +2720,7 @@ function Dashboard() {
                                     </div>
                                 </div>
                             `;
-            }).join('')}
+                    }).join('')}
                     </div>
                     
                     <!-- Add Printer Button -->
@@ -2792,6 +2811,29 @@ function Dashboard() {
                     </div>
                     
                     <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            <i class="ph ph-printer text-gray-400 mr-1.5"></i>
+                            Printer Type
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="printer-type" value="bluetooth" class="w-4 h-4 text-red-600" checked>
+                                <div class="ml-2">
+                                    <div class="font-medium text-sm">Bluetooth</div>
+                                    <div class="text-xs text-gray-500">Wireless printer</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="printer-type" value="wired" class="w-4 h-4 text-red-600">
+                                <div class="ml-2">
+                                    <div class="font-medium text-sm">Wired</div>
+                                    <div class="text-xs text-gray-500">USB/Network printer</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="bluetooth-device-section" class="mb-6">
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-sm font-medium text-gray-700">
                                 <i class="ph ph-bluetooth text-gray-400 mr-1.5"></i>
@@ -2819,6 +2861,22 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div id="wired-device-section" class="mb-6 hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="ph ph-plug text-gray-400 mr-1.5"></i>
+                                Printer Address
+                            </label>
+                        </div>
+                        <input
+                            type="text"
+                            id="wired-address-input"
+                            class="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-gradient-to-r from-white to-gray-50 shadow-sm"
+                            placeholder="e.g. 192.168.1.100 or USB port"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Enter IP address for network printers or port identifier for USB printers</p>
                     </div>
                     
                     <div class="mb-3">
@@ -2900,6 +2958,10 @@ function Dashboard() {
             onShown: (modalControl) => {
                 const errorContainer = document.getElementById('add-printer-error-container');
                 const printerNameInput = document.getElementById('printer-name-input');
+                const printerTypeRadios = document.querySelectorAll('input[name="printer-type"]');
+                const bluetoothSection = document.getElementById('bluetooth-device-section');
+                const wiredSection = document.getElementById('wired-device-section');
+                const wiredAddressInput = document.getElementById('wired-address-input');
                 const selectDeviceBtn = document.getElementById('select-device-btn');
                 const deviceInfoDiv = document.getElementById('device-info');
                 const noDeviceSelectedDiv = document.getElementById('no-device-selected');
@@ -2914,6 +2976,21 @@ function Dashboard() {
                 const saveButton = document.getElementById('save-add-printer-btn');
 
                 let selectedDevice = null;
+                let printerType = 'bluetooth'; // Default printer type
+
+                // Handle printer type change
+                printerTypeRadios.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        printerType = radio.value;
+                        bluetoothSection.classList.toggle('hidden', printerType !== 'bluetooth');
+                        wiredSection.classList.toggle('hidden', printerType !== 'wired');
+
+                        // Reset device selection when switching types
+                        if (printerType === 'wired') {
+                            selectedDevice = null;
+                        }
+                    });
+                });
 
                 // Show/hide assignments based on checkbox
                 addAssignmentsInput.addEventListener('change', () => {
@@ -3033,8 +3110,14 @@ function Dashboard() {
                             return;
                         }
 
-                        if (!selectedDevice) {
+                        if (printerType === 'bluetooth' && !selectedDevice) {
                             errorContainer.textContent = 'Please select a Bluetooth device';
+                            errorContainer.classList.remove('hidden');
+                            return;
+                        }
+
+                        if (printerType === 'wired' && !wiredAddressInput.value.trim()) {
+                            errorContainer.textContent = 'Please enter printer address';
                             errorContainer.classList.remove('hidden');
                             return;
                         }
@@ -3059,11 +3142,18 @@ function Dashboard() {
                         // Create the printer object
                         const printer = {
                             name: printerNameInput.value.trim(),
-                            deviceId: selectedDevice.id,
-                            deviceName: selectedDevice.name,
+                            type: printerType,
                             assignments: assignments,
                             dateAdded: new Date().toISOString()
                         };
+
+                        // Add device-specific properties based on printer type
+                        if (printerType === 'bluetooth' && selectedDevice) {
+                            printer.deviceId = selectedDevice.id;
+                            printer.deviceName = selectedDevice.name;
+                        } else if (printerType === 'wired') {
+                            printer.address = wiredAddressInput.value.trim();
+                        }
 
                         // Add the printer to the managed printers list
                         if (window.BluetoothPrinting) {
@@ -3121,6 +3211,9 @@ function Dashboard() {
             });
         }
 
+        // Determine printer type (for backward compatibility)
+        const printerType = printer.type || (printer.deviceId ? 'bluetooth' : 'wired');
+
         // Create modal
         const modal = window.ModalManager.createCenterModal({
             id: 'edit-printer-modal',
@@ -3144,6 +3237,29 @@ function Dashboard() {
                     </div>
                     
                     <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            <i class="ph ph-printer text-gray-400 mr-1.5"></i>
+                            Printer Type
+                        </label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="printer-type" value="bluetooth" class="w-4 h-4 text-red-600" ${printerType === 'bluetooth' ? 'checked' : ''}>
+                                <div class="ml-2">
+                                    <div class="font-medium text-sm">Bluetooth</div>
+                                    <div class="text-xs text-gray-500">Wireless printer</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center border rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                                <input type="radio" name="printer-type" value="wired" class="w-4 h-4 text-red-600" ${printerType === 'wired' ? 'checked' : ''}>
+                                <div class="ml-2">
+                                    <div class="font-medium text-sm">Wired</div>
+                                    <div class="text-xs text-gray-500">USB/Network printer</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="edit-bluetooth-section" class="mb-6 ${printerType !== 'bluetooth' ? 'hidden' : ''}">
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="block text-sm font-medium text-gray-700">
                                 <i class="ph ph-bluetooth text-gray-400 mr-1.5"></i>
@@ -3161,6 +3277,23 @@ function Dashboard() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div id="edit-wired-section" class="mb-6 ${printerType !== 'wired' ? 'hidden' : ''}">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="block text-sm font-medium text-gray-700">
+                                <i class="ph ph-plug text-gray-400 mr-1.5"></i>
+                                Printer Address
+                            </label>
+                        </div>
+                        <input
+                            type="text"
+                            id="edit-wired-address-input"
+                            class="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 bg-gradient-to-r from-white to-gray-50 shadow-sm"
+                            value="${printer.address || ''}"
+                            placeholder="e.g. 192.168.1.100 or USB port"
+                        />
+                        <p class="text-xs text-gray-500 mt-1">Enter IP address for network printers or port identifier for USB printers</p>
                     </div>
                     
                     <div class="mb-4">
@@ -3243,11 +3376,27 @@ function Dashboard() {
             onShown: (modalControl) => {
                 const errorContainer = document.getElementById('edit-printer-error-container');
                 const printerNameInput = document.getElementById('edit-printer-name-input');
+                const printerTypeRadios = document.querySelectorAll('input[name="printer-type"]');
+                const bluetoothSection = document.getElementById('edit-bluetooth-section');
+                const wiredSection = document.getElementById('edit-wired-section');
+                const wiredAddressInput = document.getElementById('edit-wired-address-input');
                 const isDefaultPrinterInput = document.getElementById('edit-is-default-printer-input');
                 const assignmentsList = document.getElementById('edit-assignments-list');
                 const addAssignmentBtn = document.getElementById('edit-add-assignment-btn');
                 const cancelButton = document.getElementById('cancel-edit-printer-btn');
                 const saveButton = document.getElementById('save-edit-printer-btn');
+
+                // Track current printer type
+                let currentPrinterType = printerType;
+
+                // Handle printer type change
+                printerTypeRadios.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        currentPrinterType = radio.value;
+                        bluetoothSection.classList.toggle('hidden', currentPrinterType !== 'bluetooth');
+                        wiredSection.classList.toggle('hidden', currentPrinterType !== 'wired');
+                    });
+                });
 
                 // Add assignment button event handler
                 addAssignmentBtn.addEventListener('click', () => {
@@ -3313,6 +3462,12 @@ function Dashboard() {
                             return;
                         }
 
+                        if (currentPrinterType === 'wired' && !wiredAddressInput.value.trim()) {
+                            errorContainer.textContent = 'Please enter printer address';
+                            errorContainer.classList.remove('hidden');
+                            return;
+                        }
+
                         // Collect assignments
                         const assignments = [];
                         const assignmentEntries = assignmentsList.querySelectorAll('.assignment-entry');
@@ -3328,13 +3483,38 @@ function Dashboard() {
                             }
                         });
 
-                        // Create the update object
+                        // Create the update object with common properties
                         const updates = {
                             name: printerNameInput.value.trim(),
+                            type: currentPrinterType,
                             assignments: assignments,
                             isDefault: isDefaultPrinterInput.checked,
                             dateModified: new Date().toISOString()
                         };
+
+                        // Add type-specific properties
+                        if (currentPrinterType === 'wired') {
+                            updates.address = wiredAddressInput.value.trim();
+                            // Remove bluetooth-specific properties if switching from bluetooth to wired
+                            if (printerType === 'bluetooth') {
+                                updates.deviceId = null;
+                                updates.deviceName = null;
+                            }
+                        } else if (currentPrinterType === 'bluetooth') {
+                            // Keep existing Bluetooth device info
+                            if (printerType === 'wired') {
+                                // If switching from wired to bluetooth without a device, show error
+                                if (!printer.deviceId) {
+                                    errorContainer.textContent = 'Cannot switch to Bluetooth without selecting a device';
+                                    errorContainer.classList.remove('hidden');
+                                    return;
+                                }
+                            }
+                            // Remove wired-specific properties if switching from wired to bluetooth
+                            if (printerType === 'wired') {
+                                updates.address = null;
+                            }
+                        }
 
                         // Update the printer
                         bluetoothPrinting.updatePrinter(printerId, updates);
