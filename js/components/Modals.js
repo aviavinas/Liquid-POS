@@ -1708,6 +1708,22 @@ function OrderView({ order, tableId, variant }) {
     const servedItems = order.items?.filter(item => item.served).length || 0;
     const totalItems = order.items?.length || 0;
     const progressPercent = totalItems > 0 ? (servedItems / totalItems) * 100 : 0;
+    const [showContextMenu, setShowContextMenu] = React.useState(false);
+    const menuRef = React.useRef(null);
+
+    // Close context menu when clicking outside
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setShowContextMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     // Handle instructions change
     const handleInstructionsChange = async (value) => {
@@ -1769,6 +1785,175 @@ function OrderView({ order, tableId, variant }) {
         } catch (error) {
             console.error("Date formatting error:", error);
             return 'Just now';
+        }
+    };
+
+    // Function to shift order to a different table
+    const handleShiftTable = () => {
+        setShowContextMenu(false);
+
+        // Check if ModalManager is available
+        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            // Fetch available tables from UserSession
+            const availableTables = window.UserSession?.seller?.tables || [];
+
+            const modalId = 'shift-table-modal-' + Date.now();
+            let content = `
+                <div id="shift-table-form">
+                    <div id="shift-table-error-container" class="mb-4 hidden p-3 bg-red-50 text-red-700 rounded-md"></div>
+                    <div class="mb-4">
+                        <div class="text-gray-700 mb-2">
+                            Current Source: <span class="font-medium">${tableId || variant || 'Direct'}</span>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-2" for="target-table">
+                            Select Target Table
+                        </label>
+                        <select
+                            id="target-table"
+                            class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+            `;
+
+            // Add options for available tables
+            if (availableTables.length > 0) {
+                availableTables.forEach(table => {
+                    // Don't include the current table
+                    if (table.id !== tableId && table.title !== tableId) {
+                        content += `<option value="${table.id || table.title}">${table.title}</option>`;
+                    }
+                });
+            } else {
+                // If no tables are available, add some default options
+                for (let i = 1; i <= 10; i++) {
+                    if (`T${i}` !== tableId) {
+                        content += `<option value="T${i}">T${i}</option>`;
+                    }
+                }
+            }
+
+            content += `
+                        </select>
+                    </div>
+                </div>
+            `;
+
+            const actions = `
+                <div class="flex justify-end gap-3">
+                    <button
+                        id="cancel-shift-table"
+                        type="button"
+                        class="px-4 py-2 border rounded-md hover:bg-gray-50"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        id="save-shift-table"
+                        type="button"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                        Shift Order
+                    </button>
+                </div>
+            `;
+
+            const modal = window.ModalManager.createCenterModal({
+                id: modalId,
+                title: `Shift Order #${order.billNo || order.id?.slice(-6)} to Another Table`,
+                content: content,
+                actions: actions,
+                onShown: (modalControl) => {
+                    const targetTableSelect = document.getElementById('target-table');
+                    const errorContainer = document.getElementById('shift-table-error-container');
+                    const cancelButton = document.getElementById('cancel-shift-table');
+                    const saveButton = document.getElementById('save-shift-table');
+
+                    if (targetTableSelect && cancelButton && saveButton) {
+                        cancelButton.addEventListener('click', () => {
+                            modalControl.close();
+                        });
+
+                        saveButton.addEventListener('click', async () => {
+                            try {
+                                const targetTableId = targetTableSelect.value;
+
+                                if (!targetTableId) {
+                                    errorContainer.textContent = "Please select a target table";
+                                    errorContainer.classList.remove('hidden');
+                                    return;
+                                }
+
+                                // Prepare update object
+                                const updateData = {
+                                    tableId: targetTableId
+                                };
+
+                                // If this is a variant order (like Swiggy, Zomato), clear the priceVariant field
+                                if (variant && !tableId) {
+                                    updateData.priceVariant = null;
+                                }
+
+                                // Update the order in Firestore
+                                await window.sdk.db.collection("Orders").doc(order.id).update(updateData);
+
+                                modalControl.close();
+
+                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
+                                    window.ModalManager.showToast(`Order shifted to table ${targetTableId}`);
+                                } else {
+                                    showToast(`Order shifted to table ${targetTableId}`);
+                                }
+
+                                // Comprehensive UI refresh approach
+                                // 1. Refresh tables data
+                                if (window.refreshTables && typeof window.refreshTables === 'function') {
+                                    window.refreshTables();
+                                }
+                                
+                                // 2. Force reload of kitchen orders to update the dining section
+                                if (window.setupKitchenOrdersListener && typeof window.setupKitchenOrdersListener === 'function') {
+                                    window.setupKitchenOrdersListener();
+                                }
+                                
+                                // 3. Trigger any order context refresh if available
+                                if (window.refreshOrders && typeof window.refreshOrders === 'function') {
+                                    window.refreshOrders();
+                                }
+                                
+                                // 4. Add a marker to the dining tables section to detect if it's empty after update
+                                const diningTablesSection = document.querySelector('.grid.grid-cols-2.md\\:grid-cols-3.lg\\:grid-cols-4.xl\\:grid-cols-5.gap-3');
+                                if (diningTablesSection) {
+                                    // Mark the section for detection
+                                    diningTablesSection.classList.add('dining-tables-refreshed');
+                                    
+                                    // Check if the section becomes empty after the update
+                                    setTimeout(() => {
+                                        const refreshedSection = document.querySelector('.dining-tables-refreshed');
+                                        if (refreshedSection && (!refreshedSection.children || refreshedSection.children.length === 0)) {
+                                            console.log("Dining tables section is empty after update, reloading page");
+                                            window.location.reload();
+                                        } else {
+                                            // Remove the marker class
+                                            if (refreshedSection) {
+                                                refreshedSection.classList.remove('dining-tables-refreshed');
+                                            }
+                                        }
+                                    }, 1500);
+                                }
+
+                            } catch (error) {
+                                console.error("Error shifting order:", error);
+                                errorContainer.textContent = "Failed to shift order: " + (error.message || "Unknown error");
+                                errorContainer.classList.remove('hidden');
+                            }
+                        });
+                    }
+                }
+            });
+        } else {
+            console.error("ModalManager not available for shift table operation");
+            showToast("Cannot shift table: Modal manager not available", "error");
         }
     };
 
@@ -2006,16 +2191,16 @@ function OrderView({ order, tableId, variant }) {
                     if (orderData.charges && Array.isArray(orderData.charges)) {
                         // Use ChargesCalculator for consistent charge calculations
                         const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-                            totalAmount, 
-                            orderData.charges, 
+                            totalAmount,
+                            orderData.charges,
                             orderData.discount || 0
                         );
-                        
+
                         if (chargesCalculation && chargesCalculation.calculatedCharges) {
                             chargesCalculation.calculatedCharges.forEach(charge => {
                                 billHtml += `<div style="display:flex; justify-content:space-between; font-size:10px;"><span>${charge.displayName}:</span><span>${charge.calculatedAmount.toFixed(2)}</span></div>`;
                             });
-                            
+
                             // Update total amount for display
                             totalAmount = chargesCalculation.finalAmount;
                         }
@@ -2352,17 +2537,17 @@ function OrderView({ order, tableId, variant }) {
 
     // Helper function to get a category-appropriate icon
     const getCategoryIcon = (item) => {
-        const category = (item.cat || item.category || '').toLowerCase();
-
-        if (category.includes('drink') || category.includes('beverage')) {
-            return 'ph-coffee';
-        } else if (category.includes('dessert') || category.includes('sweet')) {
-            return 'ph-cake';
-        } else if (item.veg) {
-            return 'ph-leaf';
-        } else {
-            return 'ph-hamburger';
+        if (item.cat) {
+            const cat = item.cat.toLowerCase();
+            if (cat.includes('drink') || cat.includes('beverage')) return 'ph-coffee text-brown-500';
+            if (cat.includes('dessert') || cat.includes('sweet')) return 'ph-cake text-yellow-600';
+            if (cat.includes('pizza') || cat.includes('pie')) return 'ph-pizza text-orange-500';
+            if (cat.includes('burger')) return 'ph-hamburger text-orange-700';
+            if (cat.includes('salad') || cat.includes('veg')) return 'ph-plant text-green-500';
+            if (cat.includes('chicken') || cat.includes('meat')) return 'ph-drumstick text-red-600';
+            if (cat.includes('soup')) return 'ph-bowl-food text-yellow-700';
         }
+        return 'ph-fork-knife text-gray-500';
     };
 
     // Calculate subtotal
@@ -2388,13 +2573,40 @@ function OrderView({ order, tableId, variant }) {
                             </p>
                         </div>
                     </div>
-                    <button
-                        className="p-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center w-10 h-10"
-                        onClick={handleAddNewItem}
-                        aria-label="Add new item"
-                    >
-                        <i className="ph ph-plus-circle text-2xl"></i>
-                    </button>
+                    <div className="flex items-center">
+                        <button
+                            className="p-2.5 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center w-10 h-10"
+                            onClick={handleAddNewItem}
+                            aria-label="Add new item"
+                        >
+                            <i className="ph ph-plus-circle text-2xl"></i>
+                        </button>
+                        <div className="relative">
+                            <button
+                                className="p-2.5 text-gray-600 hover:bg-gray-50 rounded-full transition-colors flex items-center justify-center w-10 h-10"
+                                onClick={() => setShowContextMenu(!showContextMenu)}
+                                aria-label="More options"
+                            >
+                                <i className="ph ph-dots-three-vertical text-xl"></i>
+                            </button>
+                            {showContextMenu && (
+                                <div
+                                    ref={menuRef}
+                                    className="absolute right-0 top-12 w-52 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50"
+                                >
+                                    <div className="py-1">
+                                        <button
+                                            className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                                            onClick={handleShiftTable}
+                                        >
+                                            <i className="ph ph-arrows-left-right text-red-500"></i>
+                                            <span>Shift to Table</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2502,23 +2714,23 @@ function OrderView({ order, tableId, variant }) {
                     <h3 className="font-medium text-gray-700">Sub Total:</h3>
                     <span className="font-medium text-red-500 text-lg">₹{subtotal.toFixed(2)}</span>
                 </div>
-                
+
                 {/* Use ChargesCalculator for consistent charge calculations */}
                 {(() => {
                     // Calculate charges using the utility - ensure charges is always an array
                     const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-                        subtotal, 
-                        order.charges || [], 
+                        subtotal,
+                        order.charges || [],
                         order.discount || 0
-                    ) || { 
-                        subtotal, 
-                        discount: order.discount || 0, 
-                        calculatedCharges: [], 
-                        finalAmount: subtotal - (order.discount || 0) 
+                    ) || {
+                        subtotal,
+                        discount: order.discount || 0,
+                        calculatedCharges: [],
+                        finalAmount: subtotal - (order.discount || 0)
                     };
-                    
+
                     const { calculatedCharges, finalAmount } = chargesCalculation;
-                    
+
                     return (
                         <>
                             {/* Display charges */}
@@ -2532,7 +2744,7 @@ function OrderView({ order, tableId, variant }) {
                                     ))}
                                 </div>
                             )}
-                            
+
                             {/* Display discount if any */}
                             {order.discount && parseFloat(order.discount) > 0 && (
                                 <div className="mt-2 flex justify-between items-center text-sm">
@@ -2540,7 +2752,7 @@ function OrderView({ order, tableId, variant }) {
                                     <span className="text-green-600">- ₹{parseFloat(order.discount).toFixed(2)}</span>
                                 </div>
                             )}
-                            
+
                             {/* Display total */}
                             {(calculatedCharges && calculatedCharges.length > 0) || (order.discount && parseFloat(order.discount) > 0) ? (
                                 <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
@@ -3107,7 +3319,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
         }
 
         // Validate addons
-        const invalidAddons = formData.addons.filter(addon => 
+        const invalidAddons = formData.addons.filter(addon =>
             addon.name.trim() !== '' && (isNaN(Number(addon.price)) || Number(addon.price) < 0)
         );
         if (invalidAddons.length > 0) {
@@ -3594,7 +3806,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                     Add Option
                                 </button>
                             </div>
-                            
+
                             {formData.addons.length === 0 ? (
                                 <div className="text-center py-4 bg-gray-50 rounded-lg">
                                     <i className="ph ph-puzzle-piece text-2xl text-gray-400"></i>
@@ -4145,9 +4357,9 @@ function PriceVariants({ variants, setVariants }) {
     const handleAddVariant = (predefinedName = '') => {
         setVariants([
             ...variants,
-            { 
-                id: Date.now().toString(), 
-                name: predefinedName || '', 
+            {
+                id: Date.now().toString(),
+                name: predefinedName || '',
                 price: '',
                 isDefault: variants.length === 0 // First variant is default
             }
@@ -4178,13 +4390,13 @@ function PriceVariants({ variants, setVariants }) {
     const handleRemoveVariant = (index) => {
         const updatedVariants = [...variants];
         const removedVariant = updatedVariants[index];
-        
+
         // If removing the default variant, set the first remaining variant as default
         if (removedVariant.isDefault && updatedVariants.length > 1) {
             const newDefaultIndex = index === 0 ? 1 : 0;
             updatedVariants[newDefaultIndex].isDefault = true;
         }
-        
+
         updatedVariants.splice(index, 1);
         setVariants(updatedVariants);
     };

@@ -80,12 +80,12 @@ class Item {
             served: false,
             qnt: qnt
         };
-        
+
         // Include tax update information if present
         if (product.taxUpdateInfo) {
             itemData.taxUpdateInfo = product.taxUpdateInfo;
         }
-        
+
         return new Item(itemData);
     }
 

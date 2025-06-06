@@ -92,9 +92,13 @@ function Dashboard() {
             }
         };
 
+        // Expose setupKitchenOrdersListener to window object
+        window.setupKitchenOrdersListener = setupKitchenOrdersListener;
+
         // Clean up
         return () => {
             delete window.refreshTables;
+            delete window.setupKitchenOrdersListener;
         };
     }, [profileTables]);
 
