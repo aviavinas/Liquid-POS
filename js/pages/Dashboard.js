@@ -4304,39 +4304,6 @@ function Dashboard() {
                                     </div>
 
                                     <div className="space-y-0">
-                                        {/* Account Settings */}
-                                        <div
-                                            className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 px-4 rounded-lg transition-colors"
-                                            onClick={() => {
-                                                // Check if user has permission
-                                                if (seller?.checkPermission && seller.checkPermission("Profile", "Edit")) {
-                                                    // Open edit profile modal/page
-                                                    window.ModalManager?.createCenterModal({
-                                                        id: 'edit-profile-modal',
-                                                        title: "Account Settings",
-                                                        content: `<div class="p-4">
-                                                            <p class="text-gray-600">Manage and update account settings</p>
-                                                        </div>`,
-                                                        size: 'lg'
-                                                    });
-                                                } else {
-                                                    window.ModalManager?.showToast("You don't have permission to access this feature");
-                                                }
-                                            }}>
-                                            <div className="flex items-center">
-                                                <div className="w-12 h-12 bg-red-50 rounded-lg mr-4 flex-shrink-0 flex items-center justify-center">
-                                                    <i className="ph ph-user text-red-500 text-xl"></i>
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-medium text-gray-800">Account Settings</h4>
-                                                    <p className="text-sm text-gray-500">Manage and update account settings</p>
-                                                </div>
-                                            </div>
-                                            <button className="mt-2 sm:mt-0 text-gray-400 self-start">
-                                                <i className="ph ph-caret-right text-lg"></i>
-                                            </button>
-                                        </div>
-
                                         {/* Print Template */}
                                         <div
                                             className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 px-4 rounded-lg transition-colors"

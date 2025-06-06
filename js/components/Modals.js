@@ -1910,23 +1910,23 @@ function OrderView({ order, tableId, variant }) {
                                 if (window.refreshTables && typeof window.refreshTables === 'function') {
                                     window.refreshTables();
                                 }
-                                
+
                                 // 2. Force reload of kitchen orders to update the dining section
                                 if (window.setupKitchenOrdersListener && typeof window.setupKitchenOrdersListener === 'function') {
                                     window.setupKitchenOrdersListener();
                                 }
-                                
+
                                 // 3. Trigger any order context refresh if available
                                 if (window.refreshOrders && typeof window.refreshOrders === 'function') {
                                     window.refreshOrders();
                                 }
-                                
+
                                 // 4. Add a marker to the dining tables section to detect if it's empty after update
                                 const diningTablesSection = document.querySelector('.grid.grid-cols-2.md\\:grid-cols-3.lg\\:grid-cols-4.xl\\:grid-cols-5.gap-3');
                                 if (diningTablesSection) {
                                     // Mark the section for detection
                                     diningTablesSection.classList.add('dining-tables-refreshed');
-                                    
+
                                     // Check if the section becomes empty after the update
                                     setTimeout(() => {
                                         const refreshedSection = document.querySelector('.dining-tables-refreshed');
