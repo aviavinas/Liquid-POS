@@ -1311,7 +1311,9 @@ function Dashboard() {
 
     // Format a currency value
     const formatCurrency = (amount) => {
-        return '₹ ' + amount.toLocaleString('en-IN', {
+        const currencySymbol = seller?.currencySymbol || '₹';
+        console.log("Using currency symbol:", currencySymbol, "from seller:", seller?.currency);
+        return currencySymbol + ' ' + amount.toLocaleString('en-IN', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
@@ -1449,7 +1451,7 @@ function Dashboard() {
         // Create modal
         const modal = window.ModalManager.createCenterModal({
             id: 'print-template-modal',
-            title: "Print Template",
+            title: "Receipt Template",
             content: `
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Left column: Template editor -->
@@ -4177,15 +4179,34 @@ function Dashboard() {
                                                                     value="${seller.phone || ''}"
                                                                 />
                                                             </div>
-                                                            <div class="md:col-span-2">
+                                                            <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                    Address
+                                                                    Currency
                                                                 </label>
-                                                                <textarea
-                                                                    id="address-input"
-                                                                    rows="3"
+                                                                <select
+                                                                    id="currency-select"
                                                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                                >${seller.address || ''}</textarea>
+                                                                >
+                                                                    <option value="INR" data-symbol="₹" ${seller.currency === 'INR' || !seller.currency ? 'selected' : ''}>Indian Rupee (₹)</option>
+                                                                    <option value="USD" data-symbol="$" ${seller.currency === 'USD' ? 'selected' : ''}>US Dollar ($)</option>
+                                                                    <option value="EUR" data-symbol="€" ${seller.currency === 'EUR' ? 'selected' : ''}>Euro (€)</option>
+                                                                    <option value="GBP" data-symbol="£" ${seller.currency === 'GBP' ? 'selected' : ''}>British Pound (£)</option>
+                                                                    <option value="AED" data-symbol="د.إ" ${seller.currency === 'AED' ? 'selected' : ''}>UAE Dirham (د.إ)</option>
+                                                                    <option value="SAR" data-symbol="﷼" ${seller.currency === 'SAR' ? 'selected' : ''}>Saudi Riyal (﷼)</option>
+                                                                    <option value="QAR" data-symbol="ر.ق" ${seller.currency === 'QAR' ? 'selected' : ''}>Qatari Riyal (ر.ق)</option>
+                                                                    <option value="KWD" data-symbol="د.ك" ${seller.currency === 'KWD' ? 'selected' : ''}>Kuwaiti Dinar (د.ك)</option>
+                                                                    <option value="BHD" data-symbol=".د.ب" ${seller.currency === 'BHD' ? 'selected' : ''}>Bahraini Dinar (.د.ب)</option>
+                                                                    <option value="OMR" data-symbol="ر.ع." ${seller.currency === 'OMR' ? 'selected' : ''}>Omani Rial (ر.ع.)</option>
+                                                                    <option value="EGP" data-symbol="ج.م" ${seller.currency === 'EGP' ? 'selected' : ''}>Egyptian Pound (ج.م)</option>
+                                                                    <option value="AUD" data-symbol="A$" ${seller.currency === 'AUD' ? 'selected' : ''}>Australian Dollar (A$)</option>
+                                                                    <option value="CAD" data-symbol="C$" ${seller.currency === 'CAD' ? 'selected' : ''}>Canadian Dollar (C$)</option>
+                                                                    <option value="SGD" data-symbol="S$" ${seller.currency === 'SGD' ? 'selected' : ''}>Singapore Dollar (S$)</option>
+                                                                    <option value="JPY" data-symbol="¥" ${seller.currency === 'JPY' ? 'selected' : ''}>Japanese Yen (¥)</option>
+                                                                    <option value="CNY" data-symbol="¥" ${seller.currency === 'CNY' ? 'selected' : ''}>Chinese Yuan (¥)</option>
+                                                                    <option value="MYR" data-symbol="RM" ${seller.currency === 'MYR' ? 'selected' : ''}>Malaysian Ringgit (RM)</option>
+                                                                    <option value="THB" data-symbol="฿" ${seller.currency === 'THB' ? 'selected' : ''}>Thai Baht (฿)</option>
+                                                                    <option value="ZAR" data-symbol="R" ${seller.currency === 'ZAR' ? 'selected' : ''}>South African Rand (R)</option>
+                                                                </select>
                                                             </div>
                                                             <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -4198,6 +4219,18 @@ function Dashboard() {
                                                                     value="${seller.gstNo || ''}"
                                                                 />
                                                             </div>
+                                                        </div>
+                                                        
+                                                        <div>
+                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                                Address
+                                                            </label>
+                                                            <textarea
+                                                                id="address-input"
+                                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                                rows="3"
+                                                            >${seller.address || ''}</textarea>
+                                                        </div>
                                                             <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                                                     UPI ID
@@ -4237,6 +4270,7 @@ function Dashboard() {
                                                         const gstInput = document.getElementById('gst-input');
                                                         const upiInput = document.getElementById('upi-input');
                                                         const kotEnabledInput = document.getElementById('kot-enabled-input');
+                                                        const currencySelect = document.getElementById('currency-select');
                                                         const errorContainer = document.getElementById('profile-error-container');
                                                         const cancelButton = document.getElementById('cancel-profile-btn');
                                                         const saveButton = document.getElementById('save-profile-btn');
@@ -4277,11 +4311,28 @@ function Dashboard() {
                                                                     kotEnabled: kotEnabledInput.checked
                                                                 };
 
+                                                                // Get currency data
+                                                                const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+                                                                updateData.currency = selectedOption.value;
+                                                                updateData.currencySymbol = selectedOption.getAttribute('data-symbol');
+
+                                                                console.log("Updating profile with currency data:",
+                                                                    JSON.stringify({
+                                                                        currency: updateData.currency,
+                                                                        currencySymbol: updateData.currencySymbol
+                                                                    })
+                                                                );
+
                                                                 // Update Firestore
                                                                 await window.sdk.profile.update(updateData);
 
                                                                 window.ModalManager.showToast('Store profile updated successfully');
                                                                 modalControl.close();
+
+                                                                // Force update UserSession with new data
+                                                                if (window.UserSession) {
+                                                                    await window.UserSession.fetchUser();
+                                                                }
 
                                                                 // Refresh the page to reflect changes
                                                                 setTimeout(() => {
@@ -4304,11 +4355,11 @@ function Dashboard() {
                                     </div>
 
                                     <div className="space-y-0">
-                                        {/* Print Template */}
+                                        {/* Receipt Template */}
                                         <div
                                             className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 px-4 rounded-lg transition-colors"
                                             onClick={() => {
-                                                // Open Print Template management
+                                                // Open Receipt Template management
                                                 handlePrintTemplateManagement();
                                             }}>
                                             <div className="flex items-center">
@@ -4316,7 +4367,7 @@ function Dashboard() {
                                                     <i className="ph ph-file-text text-red-500 text-xl"></i>
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-medium text-gray-800">Print Template</h4>
+                                                    <h4 className="font-medium text-gray-800">Receipt Template</h4>
                                                     <p className="text-sm text-gray-500">Manage KOT & Bill template</p>
                                                 </div>
                                             </div>

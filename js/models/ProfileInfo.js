@@ -16,6 +16,8 @@ class ProfileInfo {
         this.upiId = data.upiId || '';
         this.kotEnabled = data.kotEnabled !== false; // Default to true
         this.onboarded = data.onboarded || false;
+        this.currency = data.currency || 'INR'; // Default currency to INR
+        this.currencySymbol = data.currencySymbol || '₹'; // Default currency symbol to ₹
 
         // Access and permissions
         this.access = data.access || [];
@@ -61,6 +63,8 @@ class ProfileInfo {
             upiId: this.upiId,
             kotEnabled: this.kotEnabled,
             onboarded: this.onboarded,
+            currency: this.currency,
+            currencySymbol: this.currencySymbol,
             access: this.access,
             roles: this.roles,
             tables: this.tables,
@@ -96,11 +100,11 @@ class ProfileInfo {
         // Find role for current user
         // Since auth is handled by the host platform, we can't use window.sdk.auth()
         // Instead, we'll use a different approach or assume the user has permission
-        
+
         // For now, we'll assume the user has permission
         // In a real implementation, you might get the current user from a different source
         const currentEmail = localStorage.getItem('CURRENT_USER_EMAIL') || '';
-        
+
         // Check if user is admin (has full access)
         if (this.email === currentEmail) return true;
 

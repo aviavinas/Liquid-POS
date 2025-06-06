@@ -34,34 +34,34 @@ function ProfileProvider({ children }) {
         if (!profile?.id) return;
 
         const unsubscribe = window.sdk.profile.onSnapshot(
-                (doc) => {
-                    if (doc.exists) {
-                        const updatedData = new ProfileInfo({
-                            id: doc.id,
-                            ...doc.data()
-                        });
+            (doc) => {
+                if (doc.exists) {
+                    const updatedData = new ProfileInfo({
+                        id: doc.id,
+                        ...doc.data()
+                    });
 
-                        setProfile(updatedData);
-                        setTables(updatedData.tables || []);
+                    setProfile(updatedData);
+                    setTables(updatedData.tables || []);
 
-                        // Update roles
-                        if (updatedData.roles) {
-                            setRoles(updatedData.roles.map(role => Role.fromJson(role)));
-                        }
-
-                        // Update UserSession
-                        UserSession.seller = updatedData;
-
-                        // Trigger UI refresh
-                        if (window.refreshTables && typeof window.refreshTables === 'function') {
-                            window.refreshTables();
-                        }
+                    // Update roles
+                    if (updatedData.roles) {
+                        setRoles(updatedData.roles.map(role => Role.fromJson(role)));
                     }
-                },
-                (err) => {
-                    console.error('Error listening to profile changes:', err);
+
+                    // Update UserSession
+                    UserSession.seller = updatedData;
+
+                    // Trigger UI refresh
+                    if (window.refreshTables && typeof window.refreshTables === 'function') {
+                        window.refreshTables();
+                    }
                 }
-            );
+            },
+            (err) => {
+                console.error('Error listening to profile changes:', err);
+            }
+        );
 
         return () => unsubscribe();
     }, [profile?.id]);
@@ -365,7 +365,9 @@ function ProfileProvider({ children }) {
         get priceVariants() { return profile?.priceVariants || []; },
         get access() { return profile?.access || [profile?.email].filter(Boolean); },
         get paymentInfo() { return profile?.paymentInfo; },
-        get printTemplate() { return profile?.printTemplate; }
+        get printTemplate() { return profile?.printTemplate; },
+        get currency() { return profile?.currency || 'INR'; },
+        get currencySymbol() { return profile?.currencySymbol || '₹'; }
     };
 
     return (

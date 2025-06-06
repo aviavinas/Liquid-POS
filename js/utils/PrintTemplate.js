@@ -347,6 +347,9 @@ class PrintTemplate {
      * @private
      */
     _prepareVariablesFromOrder(orderData, seller) {
+        // Get the currency symbol from seller profile or default to ₹
+        const currencySymbol = seller.currencySymbol || '₹';
+
         const variables = {
             // Basic business info
             businessName: `${seller.businessName || 'Your Business'}`,
@@ -357,6 +360,7 @@ class PrintTemplate {
             address: seller.address ? `${seller.address}` : '',
             storeLink: seller.website ? `${seller.website}` : '',
             gstIN: seller.gstIN ? `${seller.gstIN}` : '',
+            currencySymbol: currencySymbol,
 
             // Order details
             billNo: `${orderData.billNo || orderData.id?.substring(0, 8) || 'N/A'}`,
@@ -368,7 +372,7 @@ class PrintTemplate {
             instructions: orderData.instructions ? `Instructions:\n${orderData.instructions}` : '',
             customerName: orderData.customer?.name || orderData.custName || '',
             customerPhone: orderData.customer?.phone || orderData.custPhone || '',
-            
+
             // Add bulk tax update hashtag if present
             bulkTaxHashtag: orderData.taxUpdateInfo?.hashtag || ''
         };
@@ -402,32 +406,32 @@ class PrintTemplate {
             let chargesHtml = '';
             let hasBulkTaxUpdate = false;
             let bulkTaxHashtag = null;
-            let total = 0; // Initialize total variable
-            
+            let total = 0;
+
             // Use ChargesCalculator for consistent charge calculations
             if (orderData.charges && Array.isArray(orderData.charges)) {
                 const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-                    subtotal, 
-                    orderData.charges, 
+                    subtotal,
+                    orderData.charges,
                     orderData.discount || 0
                 );
-                
+
                 if (chargesCalculation && chargesCalculation.calculatedCharges) {
                     chargesCalculation.calculatedCharges.forEach(charge => {
-                        chargesHtml += `${charge.displayName}: ${charge.calculatedAmount.toFixed(2)}\n`;
-                        
+                        chargesHtml += `${charge.displayName}: ${currencySymbol}${charge.calculatedAmount.toFixed(2)}\n`;
+
                         // Check if this charge has a bulk tax update hashtag
                         if (charge.bulkTaxHashtag) {
                             hasBulkTaxUpdate = true;
                             bulkTaxHashtag = charge.bulkTaxHashtag;
                         }
                     });
-                    
+
                     // Add bulk tax update information if present
                     if (hasBulkTaxUpdate && bulkTaxHashtag) {
                         chargesHtml += `\n${bulkTaxHashtag}\n`;
                     }
-                    
+
                     // Use the calculated final amount
                     total = chargesCalculation.finalAmount;
                 }
@@ -455,6 +459,9 @@ class PrintTemplate {
      * @private
      */
     _generateBillItemsList(items) {
+        // Get currency symbol from variables or use default
+        const currencySymbol = this.variables.currencySymbol || '₹';
+
         let html = `<div class="flex w-full font-bold border-b border-dashed border-gray-400 text-xs m-0 p-0">
             <div class="w-[10%]">Qty</div>
             <div class="w-[70%]">Item</div>
@@ -471,7 +478,7 @@ class PrintTemplate {
             html += `<div class="flex w-full text-xs">
                 <div class="w-[10%]">${quantity}</div>
                 <div class="w-[70%]">${itemName}</div>
-                <div class="w-[20%] text-right">${amount.toFixed(2)}</div>
+                <div class="w-[20%] text-right">${currencySymbol}${amount.toFixed(2)}</div>
             </div>`;
         });
 
@@ -541,7 +548,7 @@ class PrintTemplate {
 
         // Totals section
         sections.push(new PrintSection({
-            template: `Sub Total: #subtotal\n${orderData.discount && parseFloat(orderData.discount) > 0 ? 'Discount: #discount\n' : ''}#charges\nTOTAL: #total${orderData.taxUpdateInfo?.hashtag ? '\nTax ID: #bulkTaxHashtag' : ''}`,
+            template: `Sub Total: #currencySymbol#subtotal\n${orderData.discount && parseFloat(orderData.discount) > 0 ? 'Discount: #currencySymbol#discount\n' : ''}#charges\nTOTAL: #currencySymbol#total${orderData.taxUpdateInfo?.hashtag ? '\nTax ID: #bulkTaxHashtag' : ''}`,
             alignment: 'TextAlign.right',
             fontSize: 20,
             isBold: true

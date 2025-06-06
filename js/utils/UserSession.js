@@ -165,7 +165,15 @@ class UserSession {
 
     // Get currency symbol
     static getCurrency() {
+        // First try to get from seller profile
+        if (UserSession.seller?.currencySymbol) {
+            console.log("Using currency symbol from seller profile:", UserSession.seller.currencySymbol);
+            return UserSession.seller.currencySymbol;
+        }
+
+        // Fall back to session storage
         const currency = UserSession.session?.getItem("CURRENCY");
+        console.log("Using currency symbol from session:", currency || "₹");
         return currency || "₹";
     }
 

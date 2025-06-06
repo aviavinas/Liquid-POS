@@ -92,7 +92,10 @@ function pp(message) {
 
 // Utility function to format currency
 function formatCurrency(amount) {
-    return `₹${Number(amount).toLocaleString('en-IN')}`;
+    // Get currency symbol from seller profile if available
+    const currencySymbol = window.UserSession?.seller?.currencySymbol || '₹';
+    console.log("formatCurrency in utils.js using symbol:", currencySymbol);
+    return `${currencySymbol}${Number(amount).toLocaleString('en-IN')}`;
 }
 
 // Utility function to format date
