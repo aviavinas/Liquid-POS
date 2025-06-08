@@ -92,9 +92,12 @@ function pp(message) {
 
 // Utility function to format currency
 function formatCurrency(amount) {
-    // Get currency symbol from seller profile if available
-    const currencySymbol = window.UserSession?.seller?.currencySymbol || '₹';
-    console.log("formatCurrency in utils.js using symbol:", currencySymbol);
+    if (window.CurrencyData) {
+        const currencyCode = window.UserSession?.getCurrencyCode() || "INR";
+        return window.CurrencyData.formatAmount(amount, currencyCode);
+    }
+    // Fallback to default formatting if CurrencyData is not available
+    const currencySymbol = window.UserSession?.getCurrency() || '₹';
     return `${currencySymbol}${Number(amount).toLocaleString('en-IN')}`;
 }
 

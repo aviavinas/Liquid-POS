@@ -405,7 +405,7 @@ function Analytics() {
         }, [trend, scheme]);
 
         const formattedValue = type === 'currency'
-            ? `₹${Math.round(value).toLocaleString()}`
+            ? `${window.UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`
             : type === 'time'
                 ? `${Math.round(value)} min`
                 : value.toString();
@@ -596,9 +596,9 @@ function Analytics() {
                         <div className="space-y-4">
                             {(() => {
                                 const formatValue = (value, type = 'currency') => {
-                                    if (type === 'currency') return `₹${Math.round(value).toLocaleString()}`;
+                                    if (type === 'currency') return `${window.UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`;
                                     if (type === 'time') return `${Math.round(value)} min`;
-                                    return value.toString();
+                                    return value.toLocaleString();
                                 };
 
                                 const getMetricDetails = () => {

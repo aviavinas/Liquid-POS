@@ -82,7 +82,8 @@ function CustomerCard({ customer }) {
 
         let message = "Hello";
         if (balance < 0) {
-            message = `Hello ${name}, this is a reminder about your pending balance of ₹${Math.abs(balance)}`;
+            const currencySymbol = window.UserSession?.getCurrency();
+            message = `Hello ${name}, this is a reminder about your pending balance of ${currencySymbol}${Math.abs(balance)}`;
         }
 
         window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
@@ -281,16 +282,16 @@ function CustomerCard({ customer }) {
                 <div className="flex items-center">
                     {/* Balance Info */}
                     <div className="text-right mr-6">
-                        <div className="text-xs text-gray-500 mb-1">Balance:</div>
-                        <div className={`font-medium ${balance < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                            ₹{balance < 0 ? `-${Math.abs(balance).toLocaleString()}` : balance.toLocaleString()}
+                        <div className="text-sm font-medium text-gray-500">Balance</div>
+                        <div className={`font-semibold ${balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {window.UserSession?.getCurrency()}{balance < 0 ? `-${Math.abs(balance).toLocaleString()}` : balance.toLocaleString()}
                         </div>
                     </div>
 
                     {/* Spent Amount */}
                     <div className="text-right">
-                        <div className="text-xs text-gray-500 mb-1">Spent:</div>
-                        <div className="font-medium text-gray-700">₹{totalSpent.toLocaleString()}</div>
+                        <div className="text-sm font-medium text-gray-500">Total Spent</div>
+                        <div className="font-medium text-gray-700">{window.UserSession?.getCurrency()}{totalSpent.toLocaleString()}</div>
                     </div>
                 </div>
             </div>

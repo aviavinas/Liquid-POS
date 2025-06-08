@@ -52,6 +52,11 @@ function ProfileProvider({ children }) {
                     // Update UserSession
                     UserSession.seller = updatedData;
 
+                    // Update currency code in UserSession if it exists in profile
+                    if (updatedData.currencyCode) {
+                        UserSession.setCurrencyCode(updatedData.currencyCode);
+                    }
+
                     // Trigger UI refresh
                     if (window.refreshTables && typeof window.refreshTables === 'function') {
                         window.refreshTables();
@@ -115,6 +120,11 @@ function ProfileProvider({ children }) {
 
             // Update UserSession
             UserSession.seller = profileData;
+
+            // Update currency code in UserSession if it exists in profile
+            if (profileData.currencyCode) {
+                UserSession.setCurrencyCode(profileData.currencyCode);
+            }
 
             // Fetch bill number
             fetchBillNo();
@@ -362,12 +372,11 @@ function ProfileProvider({ children }) {
         get gstEnabled() { return profile?.gstNo && profile.gstNo.length > 0; },
         get upiEnabled() { return profile?.upiId && profile.upiId.length > 0; },
         get kotEnabled() { return profile?.kotEnabled !== false; },
+        get currencyCode() { return profile?.currencyCode || 'INR'; },
         get priceVariants() { return profile?.priceVariants || []; },
         get access() { return profile?.access || [profile?.email].filter(Boolean); },
         get paymentInfo() { return profile?.paymentInfo; },
-        get printTemplate() { return profile?.printTemplate; },
-        get currency() { return profile?.currency || 'INR'; },
-        get currencySymbol() { return profile?.currencySymbol || '₹'; }
+        get printTemplate() { return profile?.printTemplate; }
     };
 
     return (

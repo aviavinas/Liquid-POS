@@ -16,8 +16,7 @@ class ProfileInfo {
         this.upiId = data.upiId || '';
         this.kotEnabled = data.kotEnabled !== false; // Default to true
         this.onboarded = data.onboarded || false;
-        this.currency = data.currency || 'INR'; // Default currency to INR
-        this.currencySymbol = data.currencySymbol || '₹'; // Default currency symbol to ₹
+        this.currencyCode = data.currencyCode || 'INR'; // Default to INR
 
         // Access and permissions
         this.access = data.access || [];
@@ -63,8 +62,6 @@ class ProfileInfo {
             upiId: this.upiId,
             kotEnabled: this.kotEnabled,
             onboarded: this.onboarded,
-            currency: this.currency,
-            currencySymbol: this.currencySymbol,
             access: this.access,
             roles: this.roles,
             tables: this.tables,
@@ -73,7 +70,8 @@ class ProfileInfo {
             paymentInfo: this.paymentInfo,
             printTemplate: this.printTemplate,
             currentBillNo: this.currentBillNo,
-            lastBillDate: this.lastBillDate
+            lastBillDate: this.lastBillDate,
+            currencyCode: this.currencyCode
         };
     }
 

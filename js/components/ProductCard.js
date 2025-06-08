@@ -155,9 +155,9 @@ function ProductCard({ product }) {
                 {/* Price Row */}
                 <div className="flex items-center justify-between mt-1.5">
                     <div className="flex items-baseline gap-1">
-                        <div className="font-semibold text-gray-800">₹{product.price}</div>
-                        {product.hasDiscount && (
-                            <div className="text-2xs line-through text-gray-400">₹{product.mrp}</div>
+                        <div className="font-semibold text-gray-800">{window.UserSession?.getCurrency()}{product.price}</div>
+                        {product.mrp > product.price && (
+                            <div className="text-2xs line-through text-gray-400">{window.UserSession?.getCurrency()}{product.mrp}</div>
                         )}
                     </div>
 

@@ -75,7 +75,7 @@ function CheckoutSheet({ order, onClose }) {
                             <p className="text-sm text-gray-500">Qty: {item.qnt}</p>
                         </div>
                         <div className="text-right">
-                            <span className="font-medium">₹{item.price}</span>
+                            <span className="font-medium">{window.UserSession?.getCurrency()}{item.price}</span>
                         </div>
                     </div>
                 ))}
@@ -100,9 +100,9 @@ function CheckoutSheet({ order, onClose }) {
                     }}
                 />
                 <div className="text-right">
-                    <p className="text-gray-700">Sub Total: ₹{order.subTotal}</p>
-                    <p className="text-green-600 mt-1">Discount: - ₹{order.discount}</p>
-                    <p className="text-xl font-bold mt-4">Pay Total: ₹{order.total}</p>
+                    <p className="text-gray-700">Sub Total: {window.UserSession?.getCurrency()}{order.subTotal}</p>
+                    <p className="text-green-600 mt-1">Discount: - {window.UserSession?.getCurrency()}{order.discount}</p>
+                    <p className="text-xl font-bold mt-4">Pay Total: {window.UserSession?.getCurrency()}{order.total}</p>
                 </div>
             </div>
         </div>

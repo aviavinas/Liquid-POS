@@ -72,7 +72,7 @@ function CustomerDetails() {
                         <div>
                             <p class="text-sm text-gray-600">Current Balance</p>
                             <p class="text-xl font-bold ${Number(customerData.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}">
-                                ₹${Number(customerData.balance || 0) < 0
+                                ${window.UserSession?.getCurrency()}${Number(customerData.balance || 0) < 0
                 ? `-${Math.abs(Number(customerData.balance || 0)).toLocaleString()}`
                 : (Number(customerData.balance || 0)).toLocaleString()}
                             </p>
@@ -282,10 +282,10 @@ function CustomerDetails() {
                                 </div>
                                 <div class="text-right">
                                     <p class="font-medium ${transaction.type === 'CREDIT' ? 'text-red-500' : 'text-green-500'}">
-                                        ${transaction.type === 'CREDIT' ? '-' : '+'}₹${transaction.amount.toLocaleString()}
+                                        ${transaction.type === 'CREDIT' ? '-' : '+'}${window.UserSession?.getCurrency()}${transaction.amount.toLocaleString()}
                                     </p>
                                     <p class="text-sm text-gray-500">
-                                        Balance: ₹${transaction.balance.toLocaleString()}
+                                        Balance: ${window.UserSession?.getCurrency()}${transaction.balance.toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -369,7 +369,7 @@ function CustomerDetails() {
                                                 </span>
                                                 <span class="text-sm">${item.title}</span>
                                             </div>
-                                            <span class="text-sm font-medium">₹${item.total}</span>
+                                            <span class="text-sm font-medium">${window.UserSession?.getCurrency()}${item.total}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -378,21 +378,21 @@ function CustomerDetails() {
                             <div class="border-t border-gray-100 -mx-4 px-4 pt-3">
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-600">Items Total</span>
-                                    <span class="font-medium">₹${order.itemTotal}</span>
+                                    <span class="font-medium">${window.UserSession?.getCurrency()}${order.itemTotal}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-sm mt-1">
                                     <span class="text-gray-600">Tax (18%)</span>
-                                    <span class="font-medium">₹${order.taxAmount.toFixed(2)}</span>
+                                    <span class="font-medium">${window.UserSession?.getCurrency()}${order.taxAmount.toFixed(2)}</span>
                                 </div>
                                 ${order.discount > 0 ? `
                                     <div class="flex justify-between items-center text-sm mt-1">
                                         <span class="text-gray-600">Discount</span>
-                                        <span class="font-medium text-green-600">-₹${order.discount}</span>
+                                        <span class="font-medium text-green-600">-${window.UserSession?.getCurrency()}${order.discount}</span>
                                     </div>
                                 ` : ''}
                                 <div class="flex justify-between items-center font-medium mt-2 pt-2 border-t border-gray-100">
                                     <span>Total Amount</span>
-                                    <span class="text-red-600">₹${(order.finalAmount - order.discount).toFixed(2)}</span>
+                                    <span class="text-red-600">${window.UserSession?.getCurrency()}${(order.finalAmount - order.discount).toFixed(2)}</span>
                                 </div>
                             </div>
 
@@ -450,7 +450,7 @@ function CustomerDetails() {
                     amount: data.amount || 0,
                     type: 'DEPOSIT',
                     date: transactionDate,
-                    description: `Deposited ₹${data.amount} in ${data.mode} payment.`,
+                    description: `Deposited ${window.UserSession?.getCurrency()}${data.amount} in ${data.mode} payment.`,
                     balance: 0 // Will calculate
                 };
             });
@@ -592,7 +592,7 @@ function CustomerDetails() {
                     <label for="deposit-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <span class="text-gray-500">₹</span>
+                            <span class="text-gray-500">${window.UserSession?.getCurrency()}</span>
                         </div>
                         <input type="number" id="deposit-amount" class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500" placeholder="0.00" min="1" step="1">
                     </div>
@@ -647,7 +647,7 @@ function CustomerDetails() {
                         });
 
                         // Show success message
-                        window.ModalManager.showToast(`Added ₹${amount} to ${customerData.name}'s balance`);
+                        window.ModalManager.showToast(`Added ${window.UserSession?.getCurrency()}${amount} to ${customerData.name}'s balance`);
 
                         // Close modal
                         modalControl.close();
@@ -762,7 +762,8 @@ function CustomerDetails() {
             return;
         }
 
-        const message = `Hi ${customerData.name || 'Customer'}, this is a reminder that you have an outstanding balance of ₹${Math.abs(balance)} with us. Please clear your dues at your earliest convenience. Thank you.`;
+        const currencySymbol = window.UserSession?.getCurrency();
+        const message = `Hi ${customerData.name || 'Customer'}, this is a reminder that you have an outstanding balance of ${currencySymbol}${Math.abs(balance)} with us. Please clear your dues at your earliest convenience. Thank you.`;
 
         window.open(`https://wa.me/${customerData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
 
@@ -782,9 +783,10 @@ function CustomerDetails() {
         const balanceElement = modal.container.querySelector('.mt-4.p-4.bg-red-50 p.text-xl.font-bold');
         if (balanceElement) {
             balanceElement.className = `text-xl font-bold ${Number(customerData.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`;
-            balanceElement.textContent = `₹${Number(customerData.balance || 0) < 0
+            const currencySymbol = window.UserSession?.getCurrency();
+            balanceElement.textContent = `${currencySymbol}${Number(customerData.balance || 0) < 0
                 ? `-${Math.abs(Number(customerData.balance || 0)).toLocaleString()}`
-                : (Number(customerData.balance || 0)).toLocaleString()}`;
+                : Number(customerData.balance || 0).toLocaleString()}`;
         }
 
         // Check if we need to update reminder button visibility

@@ -31,18 +31,18 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     // Calculate charges (taxes, etc.)
     const chargesCalculation = React.useMemo(() => {
         if (!cart) return { calculatedCharges: [], totalChargesAmount: 0, finalAmount: 0 };
-        
+
         // Collect all product charges
         const productCharges = [];
         let commonBulkTaxHashtag = null;
         let allProductsHaveSameHashtag = true;
         let firstProduct = true;
-        
+
         Object.values(cart).forEach(item => {
             // Check for bulk tax update hashtag
             if (item.product.taxUpdateInfo && item.product.taxUpdateInfo.isFromBulkUpdate) {
                 const productHashtag = item.product.taxUpdateInfo.hashtag;
-                
+
                 if (firstProduct) {
                     commonBulkTaxHashtag = productHashtag;
                     firstProduct = false;
@@ -52,12 +52,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             } else {
                 allProductsHaveSameHashtag = false;
             }
-            
+
             if (item.product.charges && item.product.charges.length > 0) {
                 productCharges.push(...item.product.charges);
             }
         });
-        
+
         // Consolidate charges by name
         const consolidatedCharges = [];
         productCharges.forEach(charge => {
@@ -68,26 +68,26 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     existingCharge.value = (parseFloat(existingCharge.value) + parseFloat(charge.value)).toString();
                 }
             } else {
-                consolidatedCharges.push({...charge});
+                consolidatedCharges.push({ ...charge });
             }
         });
-        
+
         // Add bulk tax update hashtag if all products have the same one
         if (allProductsHaveSameHashtag && commonBulkTaxHashtag) {
             consolidatedCharges.forEach(charge => {
                 charge.bulkTaxHashtag = commonBulkTaxHashtag;
             });
         }
-        
+
         // Use ChargesCalculator to calculate final amounts
-        return window.ChargesCalculator && typeof window.ChargesCalculator.calculateCharges === 'function' 
+        return window.ChargesCalculator && typeof window.ChargesCalculator.calculateCharges === 'function'
             ? window.ChargesCalculator.calculateCharges(cartSubTotal, consolidatedCharges, discount)
             : {
                 calculatedCharges: [],
                 finalAmount: cartSubTotal - (discount || 0)
             };
     }, [cart, cartSubTotal, discount]);
-    
+
     // Extract values from calculation
     const { calculatedCharges, finalAmount } = chargesCalculation;
     const cartTotal = finalAmount;
@@ -439,7 +439,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         finalItemData.addons = [];
                         finalItemData.addonsTotal = 0;
                     }
-                    
+
                     // Crucial: Set the final price here, AFTER Item.fromProduct and AFTER calculating addons
                     finalItemData.price = effectivePrice + addonsTotal;
                     // Preserve original MRP and other necessary fields that Item.fromProduct might have set
@@ -467,7 +467,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     const addonsTotal = (cartItem.addons && cartItem.addons.length > 0)
                         ? cartItem.addons.reduce((sum, addon) => sum + addon.price, 0)
                         : 0;
-                    
+
                     finalItemData = {
                         pid: cartItem.product.id,
                         title: cartItem.product.title,
@@ -483,12 +483,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         addons: addonsData,
                         addonsTotal: addonsTotal
                     };
-                    
+
                     // Add tax update info if present
                     if (cartItem.product.taxUpdateInfo) {
                         finalItemData.taxUpdateInfo = cartItem.product.taxUpdateInfo;
                     }
-                    
+
                     return { data: finalItemData }; // Consistent return structure
                 }
             });
@@ -680,7 +680,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
                 // After checkout is complete, handle bill printing with centralized method
                 let billPrintedSuccessfully = false;
-                
+
                 if (window.BluetoothPrinting && autoPrint) {
                     try {
                         // Use centralized print method that handles all scenarios internally
@@ -804,9 +804,9 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         } else {
             setDiscount(amount);
             if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                window.ModalManager.showToast(`Discount of ₹${amount.toFixed(2)} applied`, { type: "success" });
+                window.ModalManager.showToast(`Discount of ${window.UserSession?.getCurrency()}${amount.toFixed(2)} applied`, { type: "success" });
             } else {
-                showToast(`Discount of ₹${amount.toFixed(2)} applied`, "success");
+                showToast(`Discount of ${window.UserSession?.getCurrency()}${amount.toFixed(2)} applied`, "success");
             }
         }
         setShowDiscountModal(false);
@@ -837,7 +837,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         </label>
                         <div class="flex items-center border rounded-lg overflow-hidden shadow-sm">
                             <span class="px-3 py-2 bg-gray-100 text-gray-500">
-                                ${percentMode ? '%' : '₹'}
+                                ${percentMode ? '%' : window.UserSession?.getCurrency()}
                             </span>
                             <input
                                 type="number"
@@ -850,7 +850,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <p class="text-xs text-gray-500 mt-2">
                             ${percentMode
                     ? 'Enter percentage between 1-100'
-                    : `Maximum discount: ₹${cartSubTotal}`}
+                    : `Maximum discount: ${window.UserSession?.getCurrency()}${cartSubTotal}`}
                         </p>
                     </div>
 
@@ -858,12 +858,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     <div class="bg-gray-50 rounded-lg p-4 mb-5">
                         <div className="flex justify-between mb-1">
                             <span className="text-gray-600">Subtotal:</span>
-                            <span>₹${cartSubTotal}</span>
+                            <span>${window.UserSession?.getCurrency()}${cartSubTotal}</span>
                         </div>
                         <div className="flex justify-between mb-1 text-green-600">
                             <span>Discount:</span>
                             <span id="discount-amount">
-                                - ₹${percentMode
+                                - ${window.UserSession?.getCurrency()}${percentMode
                     ? ((parseFloat(discountInput) || 0) * cartSubTotal / 100).toFixed(2)
                     : (Math.min(parseFloat(discountInput) || 0, cartSubTotal)).toFixed(2)
                 }
@@ -872,7 +872,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <div className="flex justify-between font-medium text-lg pt-2 border-t">
                             <span>Final Total:</span>
                             <span id="final-total">
-                                ₹${percentMode
+                                {window.UserSession?.getCurrency()}${percentMode
                     ? (cartSubTotal - ((parseFloat(discountInput) || 0) * cartSubTotal / 100)).toFixed(2)
                     : (cartSubTotal - Math.min(parseFloat(discountInput) || 0, cartSubTotal)).toFixed(2)
                 }
@@ -938,8 +938,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     ? ((parseFloat(newValue) || 0) * cartSubTotal / 100)
                                     : Math.min(parseFloat(newValue) || 0, cartSubTotal);
 
-                                discountAmount.textContent = `- ₹${calculatedDiscount.toFixed(2)}`;
-                                finalTotal.textContent = `₹${(cartSubTotal - calculatedDiscount).toFixed(2)}`;
+                                discountAmount.textContent = `- ${window.UserSession?.getCurrency()}${calculatedDiscount.toFixed(2)}`;
+                                finalTotal.textContent = `${window.UserSession?.getCurrency()}${(cartSubTotal - calculatedDiscount).toFixed(2)}`;
                             }
                         });
                     }
@@ -1027,7 +1027,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         }
 
         setIsGeneratingBill(true);
-        
+
         try {
             // Get order data
             const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
@@ -1084,28 +1084,28 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
             // Get the receipt container element
             const receiptContent = iframe.contentDocument.querySelector('.printer-container');
-            
+
             if (!receiptContent) {
                 throw new Error("Receipt content container not found");
             }
-            
+
             // Force a layout calculation
             receiptContent.style.margin = '0';
             receiptContent.style.padding = '0';
             receiptContent.style.backgroundColor = '#FFFFFF';
-            
+
             // Wait for layout to stabilize
             await new Promise(resolve => setTimeout(resolve, 200));
-            
+
             // Get content dimensions
             const width = receiptContent.offsetWidth || 300;
             const height = receiptContent.offsetHeight || 500;
-            
+
             // Ensure modernScreenshot is available
             if (!window.modernScreenshot) {
                 throw new Error("Modern Screenshot library not available");
             }
-            
+
             // Capture the receipt content as PNG with error handling
             let pngDataUrl;
             try {
@@ -1119,10 +1119,10 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 console.error("Error capturing screenshot:", screenshotError);
                 throw new Error("Failed to generate bill image: " + (screenshotError.message || "Screenshot error"));
             }
-            
+
             // Clean up
             document.body.removeChild(iframe);
-            
+
             // Set the bill image URL
             setBillImageUrl(pngDataUrl);
             showToast("Bill image generated successfully", "success");
@@ -1158,11 +1158,11 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const bstr = atob(arr[1]);
             let n = bstr.length;
             const u8arr = new Uint8Array(n);
-            
+
             while (n--) {
                 u8arr[n] = bstr.charCodeAt(n);
             }
-            
+
             return new Blob([u8arr], { type: mime });
         } catch (error) {
             console.error("Error in dataURLtoBlob:", error);
@@ -1175,7 +1175,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         try {
             // Variable to hold the image data - either from state or newly generated
             let imageData = billImageUrl;
-            
+
             if (!imageData) {
                 console.log("Bill image not available, generating now...");
                 // Generate the image and store the returned data directly
@@ -1185,7 +1185,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     return; // Exit if image generation failed
                 }
                 console.log("Bill image generated successfully");
-                
+
                 // No need to wait for state update since we're using the direct return value
             }
 
@@ -1195,17 +1195,17 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
             const billNo = orderData?.billNo || orderId || '';
             const total = orderData?.total || cartTotal || 0;
-            
+
             // Create a more descriptive message
-            const text = `Here is your bill #${billNo} from ${window.UserSession?.seller?.name || 'us'}.\nTotal: ₹${total.toFixed(2)}\nThank you for your business!`;
-            
+            const text = `Here is your bill #${billNo} from ${window.UserSession?.seller?.name || 'us'}.\nTotal: ${window.UserSession?.getCurrency()}${total.toFixed(2)}\nThank you for your business!`;
+
             // Validate imageData before proceeding
             if (!imageData || typeof imageData !== 'string' || !imageData.startsWith('data:')) {
                 console.error("Invalid image data:", imageData);
                 showToast("Invalid bill image format. Please try again.", "error");
                 return;
             }
-            
+
             // Create a blob from the data URL for sharing
             let blob;
             try {
@@ -1218,9 +1218,9 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 showToast("Failed to process bill image. Please try again.", "error");
                 return;
             }
-            
+
             const file = new File([blob], `bill-${billNo}.png`, { type: "image/png" });
-            
+
             // First try Web Share API if available - this can share both text and image on supported platforms
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
@@ -1236,18 +1236,18 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     // Continue to fallback methods
                 }
             }
-            
+
             // More reliable desktop detection - check for touch support and screen size
-            const isDesktop = (window.innerWidth > 1024 && !('ontouchstart' in window)) || 
-                             !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
+            const isDesktop = (window.innerWidth > 1024 && !('ontouchstart' in window)) ||
+                !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
             // If Web Share API is not available or failed, show a modal with options
             if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
                 // Save the bill image first for easy access
                 const downloadLink = document.createElement('a');
                 downloadLink.href = imageData; // Use our local imageData variable instead of billImageUrl
                 downloadLink.download = `bill-${billNo}.png`;
-                
+
                 // Create modal content with specific WhatsApp Web instructions for desktop
                 const modalContent = `
                     <div class="text-center">
@@ -1333,7 +1333,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         ` : ''}
                     </div>
                 `;
-                
+
                 window.ModalManager.createCenterModal({
                     title: 'Share Bill via WhatsApp',
                     content: modalContent,
@@ -1347,10 +1347,10 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     document.body.appendChild(downloadLink);
                                     downloadLink.click();
                                     document.body.removeChild(downloadLink);
-                                    
+
                                     // Show toast
                                     showToast("Bill image downloaded successfully", "success");
-                                    
+
                                     // Highlight the next step for desktop users
                                     if (isDesktop) {
                                         const copyBtn = document.getElementById('copy-message');
@@ -1360,7 +1360,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                 copyBtn.classList.remove('animate-pulse');
                                             }, 2000);
                                         }
-                                        
+
                                         // Mark this step as completed
                                         downloadBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
                                         downloadBtn.classList.add('bg-gray-400');
@@ -1369,7 +1369,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         // For mobile, continue with opening WhatsApp
                                         const customerPhone = customer?.phone || '';
                                         let whatsappUrl;
-                                        
+
                                         if (customerPhone && customerPhone.trim()) {
                                             // Format phone number - remove non-digits
                                             const phoneNumber = customerPhone.replace(/\D/g, '');
@@ -1378,7 +1378,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                             // No phone number, use general link
                                             whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
                                         }
-                                        
+
                                         // Open WhatsApp after a short delay
                                         setTimeout(() => {
                                             window.open(whatsappUrl, '_blank');
@@ -1391,7 +1391,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                 }
                             });
                         }
-                        
+
                         // Set up copy message button for desktop
                         if (isDesktop) {
                             const copyMessageBtn = document.getElementById('copy-message');
@@ -1401,7 +1401,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         navigator.clipboard.writeText(text)
                                             .then(() => {
                                                 showToast("Message copied to clipboard", "success");
-                                                
+
                                                 // Show visual feedback
                                                 const copySuccess = document.getElementById('copy-success');
                                                 if (copySuccess) {
@@ -1410,12 +1410,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                         copySuccess.classList.add('hidden');
                                                     }, 2000);
                                                 }
-                                                
+
                                                 // Mark this step as completed
                                                 copyMessageBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
                                                 copyMessageBtn.classList.add('bg-gray-400');
                                                 copyMessageBtn.innerHTML = '<i class="ph ph-check mr-2"></i> Message Copied';
-                                                
+
                                                 // Highlight the next step
                                                 const whatsappBtn = document.getElementById('open-whatsapp-web');
                                                 if (whatsappBtn) {
@@ -1435,7 +1435,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     }
                                 });
                             }
-                            
+
                             // Set up copy text area functionality
                             const copyTextArea = document.getElementById('copy-text-area');
                             const copySuccess = document.getElementById('copy-success');
@@ -1445,7 +1445,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         .then(() => {
                                             copySuccess.classList.remove('hidden');
                                             copyTextArea.classList.add('bg-green-50', 'border-green-200');
-                                            
+
                                             // Mark the copy button as completed
                                             const copyMessageBtn = document.getElementById('copy-message');
                                             if (copyMessageBtn) {
@@ -1453,7 +1453,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                 copyMessageBtn.classList.add('bg-gray-400');
                                                 copyMessageBtn.innerHTML = '<i class="ph ph-check mr-2"></i> Message Copied';
                                             }
-                                            
+
                                             setTimeout(() => {
                                                 copySuccess.classList.add('hidden');
                                                 copyTextArea.classList.remove('bg-green-50', 'border-green-200');
@@ -1466,7 +1466,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                 });
                             }
                         }
-                        
+
                         // Set up WhatsApp Web button for desktop
                         if (isDesktop) {
                             const openWhatsAppBtn = document.getElementById('open-whatsapp-web');
@@ -1476,7 +1476,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         // Check if customer phone is available
                                         const customerPhone = customer?.phone || '';
                                         let whatsappUrl;
-                                        
+
                                         if (customerPhone && customerPhone.trim()) {
                                             // Format phone number - remove non-digits
                                             const phoneNumber = customerPhone.replace(/\D/g, '');
@@ -1485,14 +1485,14 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                             // No phone number, just open WhatsApp Web
                                             whatsappUrl = 'https://web.whatsapp.com/';
                                         }
-                                        
+
                                         window.open(whatsappUrl, '_blank');
-                                        
+
                                         // Mark this step as completed
                                         openWhatsAppBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
                                         openWhatsAppBtn.classList.add('bg-gray-400');
                                         openWhatsAppBtn.innerHTML = '<i class="ph ph-check mr-2"></i> WhatsApp Web Opened';
-                                        
+
                                         showToast("WhatsApp Web opened. Please attach the downloaded bill image.", "info");
                                     } catch (err) {
                                         console.error("Error opening WhatsApp Web:", err);
@@ -1509,7 +1509,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         // Check if customer phone is available
                                         const customerPhone = customer?.phone || '';
                                         let whatsappUrl;
-                                        
+
                                         if (customerPhone && customerPhone.trim()) {
                                             // Format phone number - remove non-digits
                                             const phoneNumber = customerPhone.replace(/\D/g, '');
@@ -1518,7 +1518,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                             // No phone number, use general link
                                             whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
                                         }
-                                        
+
                                         window.open(whatsappUrl, '_blank');
                                         modalControl.close();
                                     } catch (err) {
@@ -1540,15 +1540,15 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     document.body.appendChild(downloadLink);
                     downloadLink.click();
                     document.body.removeChild(downloadLink);
-                    
+
                     // Check if customer phone is available
                     const customerPhone = customer?.phone || '';
                     let whatsappUrl;
-                    
+
                     if (customerPhone && customerPhone.trim()) {
                         // Format phone number - remove non-digits
                         const phoneNumber = customerPhone.replace(/\D/g, '');
-                        
+
                         // Use different URLs for desktop and mobile
                         if (isDesktop) {
                             whatsappUrl = `https://web.whatsapp.com/send?phone=${phoneNumber}`;
@@ -1567,7 +1567,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                             showToast("Bill image downloaded. Now you can attach it in WhatsApp", "success");
                         }
                     }
-                    
+
                     // Open WhatsApp after a short delay
                     setTimeout(() => {
                         window.open(whatsappUrl, '_blank');
@@ -1597,19 +1597,19 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         try {
             const customerPhone = customer?.phone || '';
             const text = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}`;
-            
+
             // Use native SMS app through URL scheme
             const smsUrl = `sms:${customerPhone}?body=${encodeURIComponent(text)}`;
             window.open(smsUrl, '_blank');
-            
+
             // If SMS URL fails, try Web Share API as fallback
             setTimeout(() => {
                 // Create a blob from the data URL
                 const blob = dataURLtoBlob(billImageUrl);
-                
+
                 // Create a File object from the Blob
                 const file = new File([blob], "bill.png", { type: "image/png" });
-                
+
                 // Check if Web Share API with files is supported
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     navigator.share({
@@ -1642,23 +1642,23 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const customerEmail = customer?.email || '';
             const subject = `Your Bill from ${window.UserSession?.seller?.name || 'Restaurant'}`;
             const body = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}. Thank you for your business!`;
-            
+
             // Primary approach: Use mailto link for web email
             const mailtoUrl = `mailto:${customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            
+
             // Try to open email client
             const newWindow = window.open(mailtoUrl, '_blank');
-            
+
             // If window.open was blocked or failed, try Web Share API as fallback
             if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
                 console.log("Email client link failed, trying Web Share API fallback");
-                
+
                 // Create a blob from the data URL
                 const blob = dataURLtoBlob(billImageUrl);
-                
+
                 // Create a File object from the Blob
                 const file = new File([blob], "bill.png", { type: "image/png" });
-                
+
                 // Check if Web Share API with files is supported
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
@@ -1678,7 +1678,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     const downloadBill = async () => {
         // Variable to hold the image data - either from state or newly generated
         let imageData = billImageUrl;
-        
+
         if (!imageData) {
             console.log("Bill image not available for download, generating now...");
             // Generate the image and store the returned data directly
@@ -1696,12 +1696,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const downloadLink = document.createElement('a');
             downloadLink.href = imageData; // Use our local imageData variable
             downloadLink.download = `bill-${orderId || 'receipt'}.png`;
-            
+
             // Append to body, click and remove
             document.body.appendChild(downloadLink);
             downloadLink.click();
             document.body.removeChild(downloadLink);
-            
+
             showToast("Bill downloaded successfully", "success");
         } catch (error) {
             console.error("Error downloading bill:", error);
@@ -1799,30 +1799,30 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="font-medium text-gray-900 text-lg">{item.product.title}</div>
-                                        
+
                                         {/* Show selected variation if any */}
                                         {item.variant && (
                                             <div className="text-sm text-gray-600 mt-0.5">
                                                 Variation: {item.variant.name}
                                             </div>
                                         )}
-                                        
+
                                         {/* Show selected add-ons if any */}
                                         {item.addons && item.addons.length > 0 && (
                                             <div className="text-sm text-gray-600 mt-0.5">
                                                 Add-ons: {item.addons.map(addon => addon.name).join(', ')}
                                             </div>
                                         )}
-                                        
+
                                         <div className="text-sm text-gray-600 mt-0.5">
-                                            {item.quantity} × ₹{item.variant ? item.variant.price : item.product.price}
+                                            {item.quantity} × ${window.UserSession?.getCurrency()}{item.variant ? item.variant.price : item.product.price}
                                             {item.addons && item.addons.length > 0 && (
                                                 <span className="text-gray-500">
-                                                    {' '}(+₹{item.addons.reduce((sum, addon) => sum + addon.price, 0)} add-ons)
+                                                    {' '}(+${window.UserSession?.getCurrency()}{item.addons.reduce((sum, addon) => sum + addon.price, 0)} add-ons)
                                                 </span>
                                             )}
                                         </div>
-                                        
+
                                         {item.product.veg !== undefined && (
                                             <div className="mt-1">
                                                 <span className={`inline-block w-4 h-4 border ${item.product.veg ? 'border-green-500' : 'border-red-500'} p-0.5 rounded-sm`}>
@@ -1832,8 +1832,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         )}
                                     </div>
                                     <div className="font-medium text-right whitespace-nowrap text-red-600">
-                                        ₹{((item.variant ? item.variant.price : item.product.price) * item.quantity + 
-                                           (item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) * item.quantity : 0)).toFixed(2)}
+                                        {window.UserSession?.getCurrency()}{((item.variant ? item.variant.price : item.product.price) * item.quantity +
+                                            (item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) * item.quantity : 0)).toFixed(2)}
                                     </div>
                                 </div>
                             ))}
@@ -1860,7 +1860,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Sub Total</span>
-                                <span>₹{cartSubTotal.toFixed(2)}</span>
+                                <span>{window.UserSession?.getCurrency()}{cartSubTotal.toFixed(2)}</span>
                             </div>
 
                             {/* Charges */}
@@ -1870,7 +1870,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     <div className="text-right">
                                         {calculatedCharges.map((charge, index) => (
                                             <div key={index}>
-                                                {charge.displayName}: ₹{charge.calculatedAmount.toFixed(2)}
+                                                {charge.displayName}: {window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}
                                             </div>
                                         ))}
                                         {calculatedCharges.some(charge => charge.bulkTaxHashtag) && (
@@ -1885,13 +1885,13 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>Discount</span>
-                                    <span>- ₹{discount.toFixed(2)}</span>
+                                    <span>- {window.UserSession?.getCurrency()}{discount.toFixed(2)}</span>
                                 </div>
                             )}
 
-                            <div className="flex justify-between font-bold text-lg pt-2 border-t mt-2">
-                                <span>Total:</span>
-                                <span className="text-red-600">₹{cartTotal.toFixed(2)}</span>
+                            <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
+                                <span className="font-medium">Grand Total</span>
+                                <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{(cartSubTotal - discount).toFixed(2)}</span>
                             </div>
                         </div>
 
@@ -1919,8 +1919,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                             )}
                                             {typeof customer.balance === 'number' && customer.balance < 0 && (
                                                 <div className="text-sm text-red-600 font-medium mt-1 flex items-center">
-                                                    <i className="ph ph-currency-inr text-xs mr-1.5"></i>
-                                                    Previous Due: {Math.abs(customer.balance).toFixed(2)}
+                                                    <i className="ph ph-currency-circle-dollar text-xs mr-1.5"></i>
+                                                    Previous Due: {window.UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}
                                                 </div>
                                             )}
                                         </div>
@@ -2110,7 +2110,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                                         )}
                                                                     </div>
                                                                     {cust.balance < 0 && (
-                                                                        <div className="text-xs text-red-500">₹{Math.abs(cust.balance).toFixed(2)} due</div>
+                                                                        <div className="text-xs text-red-500">{window.UserSession?.getCurrency()}{Math.abs(cust.balance).toFixed(2)} due</div>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -2189,16 +2189,16 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         {customer.balance < 0 ? (
                                             <>
                                                 <span className="text-gray-700 font-medium">Current Due: </span>
-                                                <span className="text-red-600 font-medium">₹{Math.abs(customer.balance).toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}</span>
                                                 <span className="mx-1">+</span>
-                                                <span className="text-red-600 font-medium">₹{cartTotal.toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
                                                 <span className="mx-1">=</span>
-                                                <span className="text-red-600 font-medium">₹{(Math.abs(customer.balance) + cartTotal).toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{(Math.abs(customer.balance) + cartTotal).toFixed(2)}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <span className="text-gray-700 font-medium">New Due: </span>
-                                                <span className="text-red-600 font-medium">₹{cartTotal.toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
                                             </>
                                         )}
                                     </div>

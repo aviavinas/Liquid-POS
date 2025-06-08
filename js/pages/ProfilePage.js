@@ -25,7 +25,8 @@ function ProfilePage({ inModal = false, onClose }) {
         address: '',
         gstNo: '',
         upiId: '',
-        kotEnabled: true
+        kotEnabled: true,
+        currencyCode: 'INR'
     });
 
     // Initialize form data when profile is loaded
@@ -37,7 +38,8 @@ function ProfilePage({ inModal = false, onClose }) {
                 address: profile.address || '',
                 gstNo: profile.gstNo || '',
                 upiId: profile.upiId || '',
-                kotEnabled: profile.kotEnabled !== false
+                kotEnabled: profile.kotEnabled !== false,
+                currencyCode: profile.currencyCode || 'INR'
             });
         }
     }, [profile]);
@@ -55,6 +57,12 @@ function ProfilePage({ inModal = false, onClose }) {
 
         try {
             await sdk.profile.update(formData);
+
+            // Update UserSession with new currency code
+            if (window.UserSession) {
+                window.UserSession.setCurrencyCode(formData.currencyCode);
+            }
+
             showToast('Profile updated successfully', 'success');
             setIsEditing(false);
             if (inModal && onClose) onClose();
@@ -198,6 +206,25 @@ function ProfilePage({ inModal = false, onClose }) {
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Currency
+                                    </label>
+                                    <select
+                                        name="currencyCode"
+                                        value={formData.currencyCode}
+                                        onChange={handleInputChange}
+                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {window.CurrencyData?.currencies.map(currency => (
+                                            <option key={currency.code} value={currency.code}>
+                                                {currency.name} ({currency.symbol})
+                                            </option>
+                                        )) || (
+                                                <option value="INR">Indian Rupee (₹)</option>
+                                            )}
+                                    </select>
+                                </div>
                                 <div className="md:col-span-2">
                                     <label className="flex items-center">
                                         <input
@@ -250,6 +277,11 @@ function ProfilePage({ inModal = false, onClose }) {
                                     icon="currency-inr"
                                     badge={upiEnabled ? "Enabled" : "Not Set"}
                                     badgeColor={upiEnabled ? "green" : "gray"}
+                                />
+                                <InfoItem
+                                    label="Currency"
+                                    value={profile?.currencyCode ? `${window.CurrencyData?.getCurrencyByCode(profile.currencyCode)?.name || 'Indian Rupee'} (${window.CurrencyData?.getCurrencyByCode(profile.currencyCode)?.symbol || '₹'})` : 'Indian Rupee (₹)'}
+                                    icon="currency-dollar"
                                 />
                                 <InfoItem
                                     label="KOT"

@@ -9,10 +9,37 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ProfileProvider>
 );
 
-// Initialize UserSession after the app is rendered
-if (window.UserSession) {
-    window.UserSession.init().catch(err => console.error("Error initializing UserSession from main.js:", err));
+// Load CurrencyData.js if not already loaded
+function loadCurrencyData() {
+    if (!window.CurrencyData) {
+        console.log('Loading CurrencyData...');
+        const script = document.createElement('script');
+        script.src = 'js/utils/CurrencyData.js';
+        script.onload = () => {
+            console.log('CurrencyData loaded successfully');
+            // Initialize UserSession after CurrencyData is loaded
+            if (window.UserSession) {
+                window.UserSession.init().catch(err => console.error("Error initializing UserSession from main.js:", err));
+            }
+        };
+        script.onerror = (err) => {
+            console.error('Error loading CurrencyData:', err);
+            // Initialize UserSession even if CurrencyData fails to load
+            if (window.UserSession) {
+                window.UserSession.init().catch(err => console.error("Error initializing UserSession from main.js:", err));
+            }
+        };
+        document.head.appendChild(script);
+    } else {
+        // Initialize UserSession if CurrencyData is already loaded
+        if (window.UserSession) {
+            window.UserSession.init().catch(err => console.error("Error initializing UserSession from main.js:", err));
+        }
+    }
 }
+
+// Load CurrencyData
+loadCurrencyData();
 
 // Initialize BluetoothPrinting service if available
 function initializeBluetoothPrinting(retryCount = 0) {

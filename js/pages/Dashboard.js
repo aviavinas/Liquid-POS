@@ -1311,12 +1311,16 @@ function Dashboard() {
 
     // Format a currency value
     const formatCurrency = (amount) => {
-        const currencySymbol = seller?.currencySymbol || '₹';
-        console.log("Using currency symbol:", currencySymbol, "from seller:", seller?.currency);
-        return currencySymbol + ' ' + amount.toLocaleString('en-IN', {
+        if (window.CurrencyData) {
+            const currencyCode = window.UserSession?.getCurrencyCode() || "INR";
+            return window.CurrencyData.formatAmount(amount, currencyCode);
+        }
+        // Fallback to default formatting if CurrencyData is not available
+        const currencySymbol = window.UserSession?.getCurrency() || '₹';
+        return `${currencySymbol} ${amount.toLocaleString('en-IN', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
-        });
+        })}`;
     };
 
     // Set up real-time listener for COMPLETED orders with date filtering
@@ -1695,21 +1699,21 @@ function Dashboard() {
                                     <tr>
                                         <td class="py-1 px-2">2</td>
                                         <td class="py-1">Butter Chicken</td>
-                                        <td class="py-1 text-right">₹599</td>
+                                        <td class="py-1 text-right">${window.UserSession?.getCurrency()}599</td>
                                     </tr>
                                     <tr>
                                         <td class="py-1 px-2">1</td>
                                         <td class="py-1">Jeera Rice</td>
-                                        <td class="py-1 text-right">₹149</td>
+                                        <td class="py-1 text-right">${window.UserSession?.getCurrency()}149</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="mt-4 text-right">
-                            <p>Sub Total: ₹748</p>
-                            <p>Discount: -₹50</p>
-                            <p>GST: ₹35</p>
-                            <p class="font-bold mt-2">TOTAL: ₹733</p>
+                            <p>Sub Total: ${window.UserSession?.getCurrency()}748</p>
+                            <p>Discount: -${window.UserSession?.getCurrency()}50</p>
+                            <p>GST: ${window.UserSession?.getCurrency()}35</p>
+                            <p class="font-bold mt-2">TOTAL: ${window.UserSession?.getCurrency()}733</p>
                         </div>
                         <div class="mt-4 text-right">
                             <p>Payment mode: Cash</p>
@@ -2203,7 +2207,7 @@ function Dashboard() {
                                     class="tax-type-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                                         >
                                     <option value="percentage" ${taxItem.type === 'percentage' ? 'selected' : ''}>Percentage (%)</option>
-                                    <option value="fixed" ${taxItem.type === 'fixed' ? 'selected' : ''}>Fixed Amount (₹)</option>
+                                    <option value="fixed" ${taxItem.type === 'fixed' ? 'selected' : ''}>Fixed Amount (${window.UserSession?.getCurrency()})</option>
                                         </select>
                                     </div>
                                 </div>
@@ -3984,7 +3988,7 @@ function Dashboard() {
                                             <div className="text-lg font-bold text-gray-800">
                                                 {(() => {
                                                     // Calculate average order value for QR orders
-                                                    if (qrOrders.length === 0) return "₹0";
+                                                    if (qrOrders.length === 0) return "${window.UserSession?.getCurrency()}0";
 
                                                     const totalValue = qrOrders.reduce((sum, order) => {
                                                         const itemsTotal = order.items?.reduce((total, item) => {
@@ -3995,7 +3999,7 @@ function Dashboard() {
                                                     }, 0);
 
                                                     const avgValue = Math.round(totalValue / qrOrders.length);
-                                                    return `₹${avgValue}`;
+                                                    return `${window.UserSession?.getCurrency()}${avgValue}`;
                                                 })()}
                                             </div>
                                         </div>
@@ -4179,34 +4183,15 @@ function Dashboard() {
                                                                     value="${seller.phone || ''}"
                                                                 />
                                                             </div>
-                                                            <div>
+                                                            <div class="md:col-span-2">
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                    Currency
+                                                                    Address
                                                                 </label>
-                                                                <select
-                                                                    id="currency-select"
+                                                                <textarea
+                                                                    id="address-input"
+                                                                    rows="3"
                                                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                                >
-                                                                    <option value="INR" data-symbol="₹" ${seller.currency === 'INR' || !seller.currency ? 'selected' : ''}>Indian Rupee (₹)</option>
-                                                                    <option value="USD" data-symbol="$" ${seller.currency === 'USD' ? 'selected' : ''}>US Dollar ($)</option>
-                                                                    <option value="EUR" data-symbol="€" ${seller.currency === 'EUR' ? 'selected' : ''}>Euro (€)</option>
-                                                                    <option value="GBP" data-symbol="£" ${seller.currency === 'GBP' ? 'selected' : ''}>British Pound (£)</option>
-                                                                    <option value="AED" data-symbol="د.إ" ${seller.currency === 'AED' ? 'selected' : ''}>UAE Dirham (د.إ)</option>
-                                                                    <option value="SAR" data-symbol="﷼" ${seller.currency === 'SAR' ? 'selected' : ''}>Saudi Riyal (﷼)</option>
-                                                                    <option value="QAR" data-symbol="ر.ق" ${seller.currency === 'QAR' ? 'selected' : ''}>Qatari Riyal (ر.ق)</option>
-                                                                    <option value="KWD" data-symbol="د.ك" ${seller.currency === 'KWD' ? 'selected' : ''}>Kuwaiti Dinar (د.ك)</option>
-                                                                    <option value="BHD" data-symbol=".د.ب" ${seller.currency === 'BHD' ? 'selected' : ''}>Bahraini Dinar (.د.ب)</option>
-                                                                    <option value="OMR" data-symbol="ر.ع." ${seller.currency === 'OMR' ? 'selected' : ''}>Omani Rial (ر.ع.)</option>
-                                                                    <option value="EGP" data-symbol="ج.م" ${seller.currency === 'EGP' ? 'selected' : ''}>Egyptian Pound (ج.م)</option>
-                                                                    <option value="AUD" data-symbol="A$" ${seller.currency === 'AUD' ? 'selected' : ''}>Australian Dollar (A$)</option>
-                                                                    <option value="CAD" data-symbol="C$" ${seller.currency === 'CAD' ? 'selected' : ''}>Canadian Dollar (C$)</option>
-                                                                    <option value="SGD" data-symbol="S$" ${seller.currency === 'SGD' ? 'selected' : ''}>Singapore Dollar (S$)</option>
-                                                                    <option value="JPY" data-symbol="¥" ${seller.currency === 'JPY' ? 'selected' : ''}>Japanese Yen (¥)</option>
-                                                                    <option value="CNY" data-symbol="¥" ${seller.currency === 'CNY' ? 'selected' : ''}>Chinese Yuan (¥)</option>
-                                                                    <option value="MYR" data-symbol="RM" ${seller.currency === 'MYR' ? 'selected' : ''}>Malaysian Ringgit (RM)</option>
-                                                                    <option value="THB" data-symbol="฿" ${seller.currency === 'THB' ? 'selected' : ''}>Thai Baht (฿)</option>
-                                                                    <option value="ZAR" data-symbol="R" ${seller.currency === 'ZAR' ? 'selected' : ''}>South African Rand (R)</option>
-                                                                </select>
+                                                                >${seller.address || ''}</textarea>
                                                             </div>
                                                             <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -4219,18 +4204,6 @@ function Dashboard() {
                                                                     value="${seller.gstNo || ''}"
                                                                 />
                                                             </div>
-                                                        </div>
-                                                        
-                                                        <div>
-                                                            <label class="block text-sm font-medium text-gray-700 mb-1">
-                                                                Address
-                                                            </label>
-                                                            <textarea
-                                                                id="address-input"
-                                                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                                                                rows="3"
-                                                            >${seller.address || ''}</textarea>
-                                                        </div>
                                                             <div>
                                                                 <label class="block text-sm font-medium text-gray-700 mb-1">
                                                                     UPI ID
@@ -4242,7 +4215,22 @@ function Dashboard() {
                                                                     value="${seller.upiId || ''}"
                                                                 />
                                                             </div>
-                                                            <div class="md:col-span-2">
+                                                            <div>
+                                                                <label class="block text-sm font-medium text-gray-700 mb-1">
+                                                                    Currency
+                                                                </label>
+                                                                <select
+                                                                    id="currency-input"
+                                                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                                                                >
+                                                                    ${window.CurrencyData?.currencies.map(currency =>
+                                                        `<option value="${currency.code}" ${(seller.currencyCode || 'INR') === currency.code ? 'selected' : ''}>
+                                                                            ${currency.name} (${currency.symbol})
+                                                                        </option>`
+                                                    ).join('')}
+                                                                </select>
+                                                            </div>
+                                                            <div>
                                                                 <label class="flex items-center">
                                                                     <input
                                                                         type="checkbox"
@@ -4270,7 +4258,6 @@ function Dashboard() {
                                                         const gstInput = document.getElementById('gst-input');
                                                         const upiInput = document.getElementById('upi-input');
                                                         const kotEnabledInput = document.getElementById('kot-enabled-input');
-                                                        const currencySelect = document.getElementById('currency-select');
                                                         const errorContainer = document.getElementById('profile-error-container');
                                                         const cancelButton = document.getElementById('cancel-profile-btn');
                                                         const saveButton = document.getElementById('save-profile-btn');
@@ -4308,31 +4295,20 @@ function Dashboard() {
                                                                     address: addressInput.value.trim(),
                                                                     gstNo: gstInput.value.trim(),
                                                                     upiId: upiInput.value.trim(),
-                                                                    kotEnabled: kotEnabledInput.checked
+                                                                    kotEnabled: kotEnabledInput.checked,
+                                                                    currencyCode: document.getElementById('currency-input').value
                                                                 };
-
-                                                                // Get currency data
-                                                                const selectedOption = currencySelect.options[currencySelect.selectedIndex];
-                                                                updateData.currency = selectedOption.value;
-                                                                updateData.currencySymbol = selectedOption.getAttribute('data-symbol');
-
-                                                                console.log("Updating profile with currency data:",
-                                                                    JSON.stringify({
-                                                                        currency: updateData.currency,
-                                                                        currencySymbol: updateData.currencySymbol
-                                                                    })
-                                                                );
 
                                                                 // Update Firestore
                                                                 await window.sdk.profile.update(updateData);
 
+                                                                // Update UserSession with new currency code
+                                                                if (window.UserSession) {
+                                                                    window.UserSession.setCurrencyCode(updateData.currencyCode);
+                                                                }
+
                                                                 window.ModalManager.showToast('Store profile updated successfully');
                                                                 modalControl.close();
-
-                                                                // Force update UserSession with new data
-                                                                if (window.UserSession) {
-                                                                    await window.UserSession.fetchUser();
-                                                                }
 
                                                                 // Refresh the page to reflect changes
                                                                 setTimeout(() => {

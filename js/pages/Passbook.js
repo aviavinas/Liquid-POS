@@ -375,7 +375,7 @@ function Passbook() {
                             </span>
                         </div>
                         <h3 className="text-2xl font-semibold text-gray-800 mt-1.5">
-                            ₹{summary.credit.toFixed(0)}
+                            {window.UserSession?.getCurrency()}{summary.credit.toFixed(0)}
                         </h3>
                     </div>
 
@@ -392,7 +392,7 @@ function Passbook() {
                             </span>
                         </div>
                         <h3 className="text-2xl font-semibold text-gray-800 mt-1.5">
-                            ₹{summary.wallet.toFixed(0)}
+                            {window.UserSession?.getCurrency()}{summary.wallet.toFixed(0)}
                         </h3>
                     </div>
                 </div>
@@ -406,7 +406,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">Cash</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            ₹{summary.cash.toFixed(0)}
+                            {window.UserSession?.getCurrency()}{summary.cash.toFixed(0)}
                         </h3>
                     </div>
 
@@ -417,7 +417,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">UPI/Card</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            ₹{summary.upi.toFixed(0)}
+                            {window.UserSession?.getCurrency()}{summary.upi.toFixed(0)}
                         </h3>
                     </div>
 
@@ -428,7 +428,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">Credit</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            ₹{summary.debit.toFixed(0)}
+                            {window.UserSession?.getCurrency()}{summary.debit.toFixed(0)}
                         </h3>
                     </div>
                 </div>
@@ -600,7 +600,7 @@ function Passbook() {
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-medium text-gray-800">₹{Math.abs(transaction.amount).toFixed(2)}</p>
+                                    <p className="text-lg font-medium text-gray-800">{window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}</p>
                                     <p className="text-xs text-gray-500 flex items-center justify-end mt-0.5">
                                         <i className={`${paymentInfo.icon} mr-1`}></i>
                                         {paymentInfo.text}
@@ -654,9 +654,9 @@ function Passbook() {
                                                             <span className="font-medium text-gray-700">{item.title}</span>
                                                         </td>
                                                         <td className="py-2.5 text-center text-gray-600">{item.qnt}</td>
-                                                        <td className="py-2.5 text-right text-gray-600">₹{Number(item.price).toFixed(2)}</td>
+                                                        <td className="py-2.5 text-right text-gray-600">{window.UserSession?.getCurrency()}{Number(item.price).toFixed(2)}</td>
                                                         <td className="py-2.5 text-right font-medium text-gray-700">
-                                                            ₹{(Number(item.price) * Number(item.qnt)).toFixed(2)}
+                                                            {window.UserSession?.getCurrency()}{(Number(item.price) * Number(item.qnt)).toFixed(2)}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -664,7 +664,9 @@ function Passbook() {
                                             <tfoot>
                                                 <tr className="border-t border-gray-200">
                                                     <td colSpan="3" className="py-3 text-right font-medium text-gray-600">Total</td>
-                                                    <td className="py-3 text-right font-semibold text-gray-800">₹{Math.abs(transaction.amount).toFixed(2)}</td>
+                                                    <td className="py-3 text-right font-semibold text-gray-800">
+                                                        {window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
+                                                    </td>
                                                 </tr>
                                             </tfoot>
                                         </table>
@@ -717,7 +719,7 @@ function Passbook() {
                                         <div className="mb-3">
                                             <div className="text-xs text-gray-500">Total Amount</div>
                                             <div className="font-medium text-lg text-primary">
-                                                ₹{Math.abs(transaction.amount).toFixed(2)}
+                                                {window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
                                             </div>
                                         </div>
                                     </div>
@@ -789,7 +791,7 @@ function Passbook() {
                                     Cash
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    ₹{summary.cash.toFixed(0)}
+                                    {window.UserSession?.getCurrency()}{summary.cash.toFixed(0)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
@@ -798,7 +800,7 @@ function Passbook() {
                                     UPI/Card
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    ₹{summary.upi.toFixed(0)}
+                                    {window.UserSession?.getCurrency()}{summary.upi.toFixed(0)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
@@ -807,7 +809,7 @@ function Passbook() {
                                     Credit
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    ₹{summary.debit.toFixed(0)}
+                                    {window.UserSession?.getCurrency()}{summary.debit.toFixed(0)}
                                 </span>
                             </div>
                         </div>

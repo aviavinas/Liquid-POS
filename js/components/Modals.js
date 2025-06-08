@@ -2648,7 +2648,7 @@ function OrderView({ order, tableId, variant }) {
                             <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-gray-800 truncate">{item.title}</h4>
                                 <div className="flex items-center mt-1">
-                                    <span className="text-sm font-medium text-red-500">₹{item.price || 0}</span>
+                                    <span className="text-sm font-medium text-red-500">{window.UserSession?.getCurrency()}{item.price || 0}</span>
                                     {item.cat && (
                                         <>
                                             <span className="mx-1 text-gray-300">•</span>
@@ -2712,7 +2712,7 @@ function OrderView({ order, tableId, variant }) {
             <div className="p-4 border-t border-pink-100">
                 <div className="flex justify-between items-center">
                     <h3 className="font-medium text-gray-700">Sub Total:</h3>
-                    <span className="font-medium text-red-500 text-lg">₹{subtotal.toFixed(2)}</span>
+                    <span className="font-medium text-red-500 text-lg">{window.UserSession?.getCurrency()}{subtotal.toFixed(2)}</span>
                 </div>
 
                 {/* Use ChargesCalculator for consistent charge calculations */}
@@ -2739,7 +2739,7 @@ function OrderView({ order, tableId, variant }) {
                                     {calculatedCharges.map((charge, index) => (
                                         <div key={index} className="flex justify-between items-center text-sm">
                                             <span className="text-gray-600">{charge.displayName}:</span>
-                                            <span className="text-gray-800">₹{charge.calculatedAmount.toFixed(2)}</span>
+                                            <span className="text-gray-800">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -2749,7 +2749,7 @@ function OrderView({ order, tableId, variant }) {
                             {order.discount && parseFloat(order.discount) > 0 && (
                                 <div className="mt-2 flex justify-between items-center text-sm">
                                     <span className="text-green-600">Discount:</span>
-                                    <span className="text-green-600">- ₹{parseFloat(order.discount).toFixed(2)}</span>
+                                    <span className="text-green-600">- {window.UserSession?.getCurrency()}{parseFloat(order.discount).toFixed(2)}</span>
                                 </div>
                             )}
 
@@ -2757,7 +2757,7 @@ function OrderView({ order, tableId, variant }) {
                             {(calculatedCharges && calculatedCharges.length > 0) || (order.discount && parseFloat(order.discount) > 0) ? (
                                 <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
                                     <h3 className="font-bold text-gray-800">Total:</h3>
-                                    <span className="font-bold text-red-500 text-lg">₹{finalAmount.toFixed(2)}</span>
+                                    <span className="font-bold text-red-500 text-lg">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                                 </div>
                             ) : null}
                         </>
@@ -2940,7 +2940,7 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
                                                     {customer.orderCount > 0 && (
                                                         <div className="ml-auto text-right">
                                                             <span className="text-sm text-gray-600">{customer.orderCount} orders</span>
-                                                            <p className="text-sm font-medium">₹{customer.totalSpent}</p>
+                                                            <p className="text-sm font-medium">{window.UserSession?.getCurrency()}{customer.totalSpent}</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -3727,11 +3727,11 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 {/* MRP */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        MRP (₹) <span className="text-red-500">*</span>
+                                        MRP ({window.UserSession?.getCurrency()}) <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
+                                    <div className="mt-1 relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">₹</span>
+                                            <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
                                         </div>
                                         <input
                                             type="text"
@@ -3747,11 +3747,11 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 {/* Selling Price */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Selling Price (₹) <span className="text-red-500">*</span>
+                                        Selling Price ({window.UserSession?.getCurrency()}) <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="relative">
+                                    <div className="mt-1 relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">₹</span>
+                                            <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
                                         </div>
                                         <input
                                             type="text"
@@ -3770,9 +3770,9 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 <div className="flex items-center mt-2 text-sm">
                                     <span className="mr-2">Price:</span>
                                     {Number(formData.mrp) > Number(formData.price) && (
-                                        <span className="line-through text-gray-500 mr-2">₹{formData.mrp}</span>
+                                        <span className="line-through text-gray-500 mr-2">{window.UserSession?.getCurrency()}{formData.mrp}</span>
                                     )}
-                                    <span className="font-medium">₹{formData.price}</span>
+                                    <span className="font-medium">{window.UserSession?.getCurrency()}{formData.price}</span>
                                     {Number(formData.mrp) > Number(formData.price) && (
                                         <span className="ml-2 text-green-600">
                                             ({Math.round(((Number(formData.mrp) - Number(formData.price)) / Number(formData.mrp)) * 100)}% OFF)
@@ -3829,7 +3829,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                             <div className="w-24">
                                                 <div className="relative">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <span className="text-gray-500 sm:text-sm">₹</span>
+                                                        <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
                                                     </div>
                                                     <input
                                                         type="number"
@@ -3979,7 +3979,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                                     : 'bg-green-100 text-green-600'
                                                     }`}
                                             >
-                                                {String(charge.value).includes('%') ? '%' : '₹'}
+                                                {String(charge.value).includes('%') ? '%' : window.UserSession?.getCurrency()}
                                             </button>
                                         </div>
                                         <button
@@ -4452,7 +4452,7 @@ function PriceVariants({ variants, setVariants }) {
                             </div>
                             <div className="w-28">
                                 <div className="flex items-center">
-                                    <span className="p-2 bg-gray-100 border border-gray-300 rounded-l-lg">₹</span>
+                                    <span className="p-2 bg-gray-100 border border-gray-300 rounded-l-lg">{window.UserSession?.getCurrency()}</span>
                                     <input
                                         type="text"
                                         placeholder="Price"

@@ -323,7 +323,7 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-sm md:text-base font-semibold text-red-600">₹{totalAmount}</div>
+                            <div className="text-sm md:text-base font-semibold text-red-600">{window.UserSession?.getCurrency()}{totalAmount}</div>
                             <div className="text-xs text-gray-500">#{order.id?.slice(-6)}</div>
                         </div>
                     </div>
@@ -413,19 +413,19 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
 // Order Details Modal Component
 function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
-    
+
     // Use ChargesCalculator for consistent charge calculations
     const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-        totalAmount, 
-        order.charges || [], 
+        totalAmount,
+        order.charges || [],
         order.discount || 0
-    ) || { 
-        subtotal: totalAmount, 
-        discount: order.discount || 0, 
-        calculatedCharges: [], 
-        finalAmount: totalAmount - (order.discount || 0) 
+    ) || {
+        subtotal: totalAmount,
+        discount: order.discount || 0,
+        calculatedCharges: [],
+        finalAmount: totalAmount - (order.discount || 0)
     };
-    
+
     const { calculatedCharges, finalAmount } = chargesCalculation;
 
     // Determine order status for showing appropriate actions
@@ -524,10 +524,10 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                         <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                                         <div className="flex justify-between items-center mt-1">
                                             <p className="text-xs text-gray-500">
-                                                {item.quantity || 1} x ₹{item.price || 0}
+                                                {item.quantity || 1} x {window.UserSession?.getCurrency()}{item.price || 0}
                                             </p>
                                             <p className="font-medium text-sm">
-                                                ₹{(item.quantity || 1) * (item.price || 0)}
+                                                {window.UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
                                             </p>
                                         </div>
                                     </div>
@@ -545,30 +545,30 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Item Total</span>
-                                <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
+                                <span className="font-medium">{window.UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
                             </div>
-                            
+
                             {/* Display each charge */}
                             {calculatedCharges && calculatedCharges.length > 0 && calculatedCharges.map((charge, index) => {
                                 return (
                                     <div key={index} className="flex justify-between">
                                         <span className="text-gray-600">{charge.displayName}</span>
-                                        <span className="font-medium">₹{charge.calculatedAmount.toFixed(2)}</span>
+                                        <span className="font-medium">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                                     </div>
                                 );
                             })}
-                            
+
                             {/* Display discount if any */}
                             {order.discount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>Discount</span>
-                                    <span>- ₹{order.discount.toFixed(2)}</span>
+                                    <span>- {window.UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
                                 </div>
                             )}
-                            
+
                             <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                                 <span className="font-medium">Grand Total</span>
-                                <span className="font-semibold text-red-600">₹{finalAmount.toFixed(2)}</span>
+                                <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                             </div>
                             {order.payMode && (
                                 <div className="flex justify-between items-center pt-1 text-xs">
@@ -708,19 +708,19 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
 // Order Details Content Component for use with ModalManager
 function OrderDetailsContent({ order, modalControl }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
-    
+
     // Use ChargesCalculator for consistent charge calculations
     const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-        totalAmount, 
-        order.charges || [], 
+        totalAmount,
+        order.charges || [],
         order.discount || 0
-    ) || { 
-        subtotal: totalAmount, 
-        discount: order.discount || 0, 
-        calculatedCharges: [], 
-        finalAmount: totalAmount - (order.discount || 0) 
+    ) || {
+        subtotal: totalAmount,
+        discount: order.discount || 0,
+        calculatedCharges: [],
+        finalAmount: totalAmount - (order.discount || 0)
     };
-    
+
     const { calculatedCharges, finalAmount } = chargesCalculation;
 
     // Determine order status for showing appropriate actions
@@ -859,10 +859,10 @@ function OrderDetailsContent({ order, modalControl }) {
                                 <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                                 <div className="flex justify-between items-center mt-1">
                                     <p className="text-xs text-gray-500">
-                                        {item.quantity || 1} x ₹{item.price || 0}
+                                        {item.quantity || 1} x {window.UserSession?.getCurrency()}{item.price || 0}
                                     </p>
                                     <p className="font-medium text-sm">
-                                        ₹{(item.quantity || 1) * (item.price || 0)}
+                                        {window.UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
                                     </p>
                                 </div>
                             </div>
@@ -880,30 +880,30 @@ function OrderDetailsContent({ order, modalControl }) {
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Item Total</span>
-                        <span className="font-medium">₹{totalAmount.toFixed(2)}</span>
+                        <span className="font-medium">{window.UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
                     </div>
-                    
+
                     {/* Display each charge */}
                     {calculatedCharges && calculatedCharges.length > 0 && calculatedCharges.map((charge, index) => {
                         return (
                             <div key={index} className="flex justify-between">
                                 <span className="text-gray-600">{charge.displayName}</span>
-                                <span className="font-medium">₹{charge.calculatedAmount.toFixed(2)}</span>
+                                <span className="font-medium">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                             </div>
                         );
                     })}
-                    
+
                     {/* Display discount if any */}
                     {order.discount > 0 && (
                         <div className="flex justify-between text-green-600">
                             <span>Discount</span>
-                            <span>- ₹{order.discount.toFixed(2)}</span>
+                            <span>- {window.UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
                         </div>
                     )}
-                    
+
                     <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                         <span className="font-medium">Grand Total</span>
-                        <span className="font-semibold text-red-600">₹{finalAmount.toFixed(2)}</span>
+                        <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                     </div>
                     {order.payMode && (
                         <div className="flex justify-between items-center pt-1 text-xs">

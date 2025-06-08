@@ -78,12 +78,12 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
     // Handle adding item to cart
     const handleAddToCart = ({ product, quantity, variant, addons }) => {
         setCart(prevCart => {
-            const cartItemId = variant 
+            const cartItemId = variant
                 ? `${product.id}_${variant.id}`
                 : product.id;
-            
+
             const existingItem = prevCart[cartItemId];
-            
+
             if (existingItem) {
                 return {
                     ...prevCart,
@@ -93,7 +93,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     }
                 };
             }
-            
+
             return {
                 ...prevCart,
                 [cartItemId]: {
@@ -178,10 +178,10 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
     // Helper function to consolidate charges from all items
     const getConsolidatedCharges = (items) => {
         if (!items || !items.length) return [];
-        
+
         // Extract all unique charges by name
         const chargeMap = {};
-        
+
         items.forEach(item => {
             if (item.charges && Array.isArray(item.charges)) {
                 item.charges.forEach(charge => {
@@ -192,7 +192,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                 });
             }
         });
-        
+
         // Convert back to array
         return Object.values(chargeMap);
     };
@@ -217,10 +217,10 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
 
                 if (cartItem.addons && cartItem.addons.length > 0) {
                     addonsTotal = cartItem.addons.reduce((sum, addon) => sum + addon.price, 0);
-                    addonsData = cartItem.addons.map(addon => ({ 
-                        id: addon.id, 
-                        name: addon.name, 
-                        price: addon.price 
+                    addonsData = cartItem.addons.map(addon => ({
+                        id: addon.id,
+                        name: addon.name,
+                        price: addon.price
                     }));
                 }
 
@@ -554,7 +554,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                         <div className="flex justify-between items-center">
                             <h3 className="font-medium text-gray-700">Subtotal</h3>
                             <span className="font-medium text-red-600 text-lg">
-                                ₹{Object.values(cart).reduce((sum, item) => {
+                                {window.UserSession?.getCurrency()}{Object.values(cart).reduce((sum, item) => {
                                     const basePrice = item.variant ? item.variant.price : item.product.price;
                                     const addonsTotal = item.addons ? item.addons.reduce((acc, addon) => acc + addon.price, 0) : 0;
                                     return sum + (basePrice + addonsTotal) * item.quantity;
@@ -606,8 +606,8 @@ function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
     const [showOptions, setShowOptions] = React.useState(false);
 
     // Check if product has options
-    const hasOptions = (product.priceVariants && product.priceVariants.length > 0) || 
-                      (product.addons && product.addons.length > 0);
+    const hasOptions = (product.priceVariants && product.priceVariants.length > 0) ||
+        (product.addons && product.addons.length > 0);
 
     // Animation effect when adding to cart
     const handleAddWithAnimation = () => {
@@ -679,9 +679,9 @@ function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
                         <h3 className="font-medium text-gray-900 line-clamp-1">{product.title}</h3>
                         <div className="flex items-center justify-between mt-1">
                             <div>
-                                <span className="font-medium text-gray-800">₹{product.price}</span>
-                                {product.hasDiscount && (
-                                    <span className="text-xs text-gray-500 line-through ml-1">₹{product.mrp}</span>
+                                <span className="font-medium text-gray-800">{window.UserSession?.getCurrency()}{product.price}</span>
+                                {product.mrp > product.price && (
+                                    <span className="text-xs text-gray-500 line-through ml-1">{window.UserSession?.getCurrency()}{product.mrp}</span>
                                 )}
                             </div>
                         </div>
@@ -840,7 +840,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
-            <div 
+            <div
                 className="bg-white rounded-xl w-full max-w-md mx-4 overflow-hidden shadow-xl"
                 onClick={e => e.stopPropagation()}
                 style={{ backgroundColor: "#fff8f8" }}
@@ -870,12 +870,12 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                         className="form-radio text-red-500 focus:ring-red-500"
                                     />
                                     <span className="ml-3 flex-1">Regular</span>
-                                    <span className="text-gray-600">₹{product.price}</span>
+                                    <span className="text-gray-600">{window.UserSession?.getCurrency()}{product.price}</span>
                                 </label>
-                                
+
                                 {product.priceVariants.map((variant) => (
-                                    <label 
-                                        key={variant.id} 
+                                    <label
+                                        key={variant.id}
                                         className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
                                     >
                                         <input
@@ -886,7 +886,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                             className="form-radio text-red-500 focus:ring-red-500"
                                         />
                                         <span className="ml-3 flex-1">{variant.name}</span>
-                                        <span className="text-gray-600">₹{variant.price}</span>
+                                        <span className="text-gray-600">{window.UserSession?.getCurrency()}{variant.price}</span>
                                     </label>
                                 ))}
                             </div>
@@ -899,11 +899,10 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                             <h4 className="font-medium text-gray-700 mb-2">Add-ons</h4>
                             <div className="space-y-2">
                                 {product.addons.map((addon) => (
-                                    <label 
+                                    <label
                                         key={addon.id}
-                                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${
-                                            addon.inStock ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 opacity-60 cursor-not-allowed'
-                                        }`}
+                                        className={`flex items-center p-3 rounded-lg cursor-pointer transition-colors ${addon.inStock ? 'bg-gray-50 hover:bg-gray-100' : 'bg-gray-100 opacity-60 cursor-not-allowed'
+                                            }`}
                                     >
                                         <input
                                             type="checkbox"
@@ -911,7 +910,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                             checked={selectedAddons.some(a => a.id === addon.id)}
                                             onChange={() => {
                                                 if (!addon.inStock) return;
-                                                setSelectedAddons(prev => 
+                                                setSelectedAddons(prev =>
                                                     prev.some(a => a.id === addon.id)
                                                         ? prev.filter(a => a.id !== addon.id)
                                                         : [...prev, addon]
@@ -920,7 +919,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                             className="form-checkbox text-red-500 focus:ring-red-500"
                                         />
                                         <span className="ml-3 flex-1">{addon.name}</span>
-                                        <span className="text-gray-600">+₹{addon.price}</span>
+                                        <span className="text-gray-600">+{window.UserSession?.getCurrency()}{addon.price}</span>
                                     </label>
                                 ))}
                             </div>
@@ -952,7 +951,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                 <div className="p-4 border-t bg-white">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-gray-600">Total Amount</span>
-                        <span className="text-lg font-medium text-red-600">₹{totalPrice.toFixed(2)}</span>
+                        <span className="text-lg font-medium text-red-600">{window.UserSession?.getCurrency()}{totalPrice.toFixed(2)}</span>
                     </div>
                     <button
                         onClick={() => {

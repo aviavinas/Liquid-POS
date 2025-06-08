@@ -133,23 +133,25 @@ class UserSession {
 
     // Fetch IP information for country and currency
     static async fetchIP() {
-        // Skip if we already have country and currency
-        if (UserSession.session.getItem("COUNTRY") &&
-            UserSession.session.getItem("CURRENCY")) {
-            return;
-        }
-
         try {
-            const response = await fetch("https://ip-api.io/json/");
+            // Skip if we already have country and currency
+            if (UserSession.session.getItem("COUNTRY") &&
+                UserSession.session.getItem("CURRENCY_CODE")) {
+                return;
+            }
+
+            // Fetch IP info
+            const response = await fetch("https://ipapi.co/json/");
             const locationData = await response.json();
 
-            UserSession.session.setItem("COUNTRY", locationData.country_code || "IN");
-            UserSession.session.setItem("CURRENCY", locationData.currencySymbol || "₹");
-        } catch (err) {
-            console.error("Unable to fetch country:", err);
-            // Set defaults if fetch fails
+            // Set country and currency
+            UserSession.session.setItem("COUNTRY", locationData.country || "IN");
+            UserSession.session.setItem("CURRENCY_CODE", locationData.currency || "INR");
+        } catch (e) {
+            console.error("Error fetching IP info:", e);
+            // Default to India and INR
             UserSession.session.setItem("COUNTRY", "IN");
-            UserSession.session.setItem("CURRENCY", "₹");
+            UserSession.session.setItem("CURRENCY_CODE", "INR");
         }
     }
 
@@ -163,18 +165,22 @@ class UserSession {
         return UserSession.getCountry() === "IN";
     }
 
+    // Get currency code
+    static getCurrencyCode() {
+        const currencyCode = UserSession.session?.getItem("CURRENCY_CODE");
+        return currencyCode || "INR";
+    }
+
     // Get currency symbol
     static getCurrency() {
-        // First try to get from seller profile
-        if (UserSession.seller?.currencySymbol) {
-            console.log("Using currency symbol from seller profile:", UserSession.seller.currencySymbol);
-            return UserSession.seller.currencySymbol;
-        }
+        const currencyCode = UserSession.getCurrencyCode();
+        const currency = window.CurrencyData?.getCurrencyByCode(currencyCode);
+        return currency?.symbol || "₹";
+    }
 
-        // Fall back to session storage
-        const currency = UserSession.session?.getItem("CURRENCY");
-        console.log("Using currency symbol from session:", currency || "₹");
-        return currency || "₹";
+    // Set currency code
+    static setCurrencyCode(code) {
+        UserSession.session?.setItem("CURRENCY_CODE", code);
     }
 
     // Run a function only once (based on a flag in session)
