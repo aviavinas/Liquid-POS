@@ -30,6 +30,9 @@ class BluetoothPrinting {
         // Try to restore the last successful connection info from localStorage
         this.lastConnectedDevice = this.getSavedPrinter();
 
+        // Initialize browser printing preference
+        this.preferBrowserPrinting = this.getBrowserPrintingPreference();
+
         // Track attempts to auto-reconnect to prevent infinite loops
         this.reconnectAttempted = false;
 
@@ -157,6 +160,12 @@ class BluetoothPrinting {
         // Determine display name for receipt type
         const receiptName = type === 'kot' ? 'KOT' : 'bill';
 
+        // Check if browser printing is preferred
+        if (this.preferBrowserPrinting) {
+            console.log('Using browser printing as preferred method');
+            return await this._fallbackToBrowserPrinting(orderData, type, paymentMode, receiptName, autoPrint);
+        }
+
         // Try Bluetooth printing first if supported
         if (this.isSupported()) {
             try {
@@ -249,7 +258,8 @@ class BluetoothPrinting {
             });
             const receiptHtml = template.toHTML();
 
-            await this.browserPrint(receiptHtml, autoPrint);
+            // Always use autoPrint=true to ensure print dialog opens
+            await this.browserPrint(receiptHtml, true);
             this._showToast(`${receiptName} printed successfully via browser`, "success");
             return true;
         } catch (fallbackErr) {
@@ -693,32 +703,52 @@ class BluetoothPrinting {
     async browserPrint(html, autoPrint = true) {
         return new Promise((resolve, reject) => {
             try {
-                // Open a new window for printing
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                    reject(new Error('Please allow popups to print'));
-                    return;
-                }
+                // Create a hidden iframe for printing instead of opening a new window
+                const iframe = document.createElement('iframe');
+                iframe.style.position = 'fixed';
+                iframe.style.right = '0';
+                iframe.style.bottom = '0';
+                iframe.style.width = '0';
+                iframe.style.height = '0';
+                iframe.style.border = '0';
 
-                printWindow.document.write(html);
-                printWindow.document.close();
+                // Add the iframe to the document
+                document.body.appendChild(iframe);
+
+                // Write content to the iframe
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write(html);
+                doc.close();
 
                 // Wait for resources to load then print
-                setTimeout(() => {
-                    if (autoPrint) {
-                        printWindow.print();
-                    }
+                iframe.onload = () => {
+                    // Trigger print dialog
+                    iframe.contentWindow.print();
 
                     // Resolve after print dialog is shown
                     resolve(true);
 
-                    // Optional: close the window after print dialog is closed
-                    if (autoPrint) {
+                    // Remove the iframe after printing
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                    }, 500);
+                };
+
+                // Set a timeout in case onload doesn't fire
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                        iframe.contentWindow.print();
+                        resolve(true);
+
+                        // Remove the iframe after printing
                         setTimeout(() => {
-                            printWindow.close();
+                            if (document.body.contains(iframe)) {
+                                document.body.removeChild(iframe);
+                            }
                         }, 500);
                     }
-                }, 500);
+                }, 1000);
             } catch (error) {
                 console.error('Browser print error:', error);
                 reject(error);
@@ -984,6 +1014,11 @@ class BluetoothPrinting {
                                 ${hasSavedPrinter ? 'Select Different Printer' : 'Select Printer'}
                             </button>
                             
+                            <button id="use-browser-print" class="w-full py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center">
+                                <i class="ph ph-browser mr-2"></i>
+                                Use Browser Print
+                            </button>
+                            
                             <button id="cancel-printer-select" class="w-full py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
                                 Cancel
                             </button>
@@ -1014,6 +1049,15 @@ class BluetoothPrinting {
                             });
                         }
 
+                        // Handle browser printing
+                        const useBrowserPrintBtn = document.getElementById('use-browser-print');
+                        if (useBrowserPrintBtn) {
+                            useBrowserPrintBtn.addEventListener('click', () => {
+                                modalControl.close();
+                                resolve('use-browser');
+                            });
+                        }
+
                         // Handle cancel
                         const cancelBtn = document.getElementById('cancel-printer-select');
                         if (cancelBtn) {
@@ -1026,10 +1070,29 @@ class BluetoothPrinting {
                 });
             } else {
                 // If ModalManager is not available, go straight to selecting a new printer
-                if (this.lastConnectedDevice && confirm(`Use last connected printer: ${this.lastConnectedDevice.name}?`)) {
-                    resolve('use-saved');
-                } else if (confirm('Select a printer?')) {
-                    resolve('select-new');
+                const options = ['Use last connected printer', 'Select new printer', 'Use browser print', 'Cancel'];
+                const selectedOption = this.lastConnectedDevice ?
+                    prompt(`Select an option:\n1. Use last connected printer: ${this.lastConnectedDevice.name}\n2. Select new printer\n3. Use browser print\n4. Cancel`, '1') :
+                    prompt(`Select an option:\n1. Select printer\n2. Use browser print\n3. Cancel`, '1');
+
+                if (selectedOption === '1') {
+                    if (this.lastConnectedDevice) {
+                        resolve('use-saved');
+                    } else {
+                        resolve('select-new');
+                    }
+                } else if (selectedOption === '2') {
+                    if (this.lastConnectedDevice) {
+                        resolve('select-new');
+                    } else {
+                        resolve('use-browser');
+                    }
+                } else if (selectedOption === '3') {
+                    if (this.lastConnectedDevice) {
+                        resolve('use-browser');
+                    } else {
+                        reject(new Error('Device selection cancelled by user'));
+                    }
                 } else {
                     reject(new Error('Device selection cancelled by user'));
                 }
@@ -1157,8 +1220,27 @@ class BluetoothPrinting {
                 throw modalError; // User cancelled from the modal
             }
 
+            // Handle browser print option
+            if (action === 'use-browser') {
+                console.log('User selected browser printing option');
+                // Set a flag to indicate browser printing preference
+                this.preferBrowserPrinting = true;
+                // Save this preference
+                this.saveBrowserPrintingPreference(true);
+                // Show toast to confirm selection
+                this._showToast('Browser printing selected', 'info');
+                // Return true to indicate successful "connection" (in this case, selection of browser printing)
+                return true;
+            }
+
             // Handle different user actions
             if (action === 'use-saved' && this.lastConnectedDevice) {
+                // Reset browser printing preference when selecting a Bluetooth printer
+                if (this.preferBrowserPrinting) {
+                    this.preferBrowserPrinting = false;
+                    this.saveBrowserPrintingPreference(false);
+                }
+
                 try {
                     console.info(`Attempting to reconnect to saved printer: ${this.lastConnectedDevice.name}. Ensure it's ON and discoverable.`);
                     this.device = await navigator.bluetooth.requestDevice({
@@ -1212,6 +1294,12 @@ class BluetoothPrinting {
                     }
                 }
             } else if (action === 'select-new') {
+                // Reset browser printing preference when selecting a new Bluetooth printer
+                if (this.preferBrowserPrinting) {
+                    this.preferBrowserPrinting = false;
+                    this.saveBrowserPrintingPreference(false);
+                }
+
                 console.info("Attempting to select a new printer. Please ensure your Bluetooth printer is ON, in PAIRING/DISCOVERABLE mode, and close to your computer. Also, ensure Bluetooth is enabled on your computer and this website has Bluetooth permissions.");
                 try {
                     this.device = await navigator.bluetooth.requestDevice({
@@ -1425,6 +1513,33 @@ class BluetoothPrinting {
 
         await this.ensurePrinterConnection();
         return true;
+    }
+
+    /**
+     * Get saved browser printing preference from localStorage
+     * @returns {boolean} Whether browser printing is preferred
+     */
+    getBrowserPrintingPreference() {
+        try {
+            const preference = localStorage.getItem('preferBrowserPrinting');
+            return preference === 'true';
+        } catch (error) {
+            console.error('Error retrieving browser printing preference:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Save browser printing preference to localStorage
+     * @param {boolean} prefer - Whether to prefer browser printing
+     */
+    saveBrowserPrintingPreference(prefer) {
+        try {
+            localStorage.setItem('preferBrowserPrinting', prefer ? 'true' : 'false');
+            this.preferBrowserPrinting = prefer;
+        } catch (error) {
+            console.error('Error saving browser printing preference:', error);
+        }
     }
 }
 
