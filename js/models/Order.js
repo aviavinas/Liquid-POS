@@ -68,17 +68,26 @@ class Item {
     }
 
     // Constructor from Product
-    static fromProduct(product, qnt) {
+    static fromProduct(product, qnt, variant = null, addons = []) {
         const itemData = {
             pid: product.id,
             title: product.title,
             thumb: product.imgs && product.imgs.length > 0 ? product.imgs[0] : null,
             cat: product.cat,
             mrp: product.mrp,
-            price: product.price,
+            price: variant ? variant.price : product.price,
             veg: product.veg,
             served: false,
-            qnt: qnt
+            qnt: qnt,
+            variantId: variant ? variant.id : null,
+            variantName: variant ? variant.name : null,
+            variantPrice: variant ? variant.price : null,
+            addons: addons.map(addon => ({
+                id: addon.id,
+                name: addon.name,
+                price: addon.price
+            })),
+            addonsTotal: addons.reduce((sum, addon) => sum + addon.price, 0)
         };
 
         // Include tax update information if present

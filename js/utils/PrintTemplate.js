@@ -473,6 +473,24 @@ class PrintTemplate {
                 <div class="w-[70%]">${itemName}</div>
                 <div class="w-[20%] text-right">${amount.toFixed(2)}</div>
             </div>`;
+            
+            // Add variant information if present
+            if (item.variantName) {
+                html += `<div class="flex w-full text-xs pl-[10%]">
+                    <div class="w-[70%] text-gray-600">+ ${item.variantName}</div>
+                    <div class="w-[20%] text-right text-gray-600">+${(item.variantPrice || 0).toFixed(2)}</div>
+                </div>`;
+            }
+            
+            // Add add-ons if present
+            if (item.addons && item.addons.length > 0) {
+                item.addons.forEach(addon => {
+                    html += `<div class="flex w-full text-xs pl-[10%]">
+                        <div class="w-[70%] text-gray-600">+ ${addon.name}</div>
+                        <div class="w-[20%] text-right text-gray-600">+${(addon.price || 0).toFixed(2)}</div>
+                    </div>`;
+                });
+            }
         });
 
         html += '<div class="border-t border-dashed border-gray-400 mt-0.5"></div>';
@@ -495,6 +513,20 @@ class PrintTemplate {
                 <div class="w-[10%] font-bold">${quantity}x</div>
                 <div class="w-[90%] font-bold">${item.title || 'Unknown Item'}</div>
             </div>`;
+
+            // Add variant information if present
+            if (item.variantName) {
+                html += `<div class="pl-5 text-xs text-gray-600">
+                    Variant: ${item.variantName}
+                </div>`;
+            }
+            
+            // Add add-ons if present
+            if (item.addons && item.addons.length > 0) {
+                html += `<div class="pl-5 text-xs text-gray-600">
+                    Add-ons: ${item.addons.map(addon => addon.name).join(', ')}
+                </div>`;
+            }
 
             if (item.instructions) {
                 html += `<div class="pl-5 italic text-xs">

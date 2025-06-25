@@ -236,6 +236,7 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     qnt: cartItem.quantity,
                     variantId: cartItem.variant?.id || null,
                     variantName: cartItem.variant?.name || null,
+                    variantPrice: cartItem.variant?.price || null,
                     addons: addonsData, // Store selected add-ons
                     addonsTotal: addonsTotal, // Store total price of add-ons for clarity/breakdown if needed
                     charges: product.charges || [] // Preserve product-specific charges

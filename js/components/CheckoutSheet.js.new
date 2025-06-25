@@ -25,16 +25,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     // Calculate cart totals
     const cartSubTotal = React.useMemo(() => {
         if (!cart) return 0;
-        return Object.values(cart).reduce((total, item) => {
-            // Base price from variant or product
-            const basePrice = item.variant ? item.variant.price : item.product.price;
-            
-            // Add add-ons prices
-            const addonsTotal = item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) : 0;
-            
-            // Calculate total for this item including quantity
-            return total + ((basePrice + addonsTotal) * item.quantity);
-        }, 0);
+        return Object.values(cart).reduce((total, item) => { const basePrice = item.variant ? item.variant.price : item.product.price; const addonsTotal = item.addons && item.addons.length > 0 ? item.addons.reduce((sum, addon) => sum + addon.price, 0) : 0; return total + ((basePrice + addonsTotal) * item.quantity); }, 0);
     }, [cart]);
 
     // Calculate charges (taxes, etc.)
