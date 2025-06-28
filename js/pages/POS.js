@@ -2,7 +2,7 @@
 const React = window.React;
 const ReactDOM = window.ReactDOM;
 
-function POS({ title, tableId, order, variant, checkout = false, onClose }) {
+function POS({ title, tableId, order, variant, checkout = false, includeAllProducts = true, onClose }) {
     const [cart, setCart] = React.useState({});
     const [products, setProducts] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
@@ -34,22 +34,46 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
     // Load products from Firestore
     const loadProducts = async () => {
         try {
+            console.log("Loading products for order:", order?.id, "includeAllProducts:", includeAllProducts);
             const snapshot = await window.sdk.db.collection("Product").get();
             let allProducts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
 
-            // Remove products that are already in order
-            if (order && order.items && Array.isArray(order.items)) {
+            console.log("Total products before filtering:", allProducts.length);
+            
+            // Only filter out existing products if includeAllProducts is false
+            if (!includeAllProducts && order && order.items && Array.isArray(order.items)) {
                 const existingProductIds = order.items.map(item => item.pid);
+                console.log("Existing product IDs in order:", existingProductIds);
+                
+                // Filter out products that are already in the order
+                const productsBeforeFilter = allProducts.length;
                 allProducts = allProducts.filter(product =>
                     !existingProductIds.includes(product.id)
                 );
+                console.log(`Filtered out ${productsBeforeFilter - allProducts.length} existing products`);
+                
+                // Log the products that were filtered out
+                const filteredOut = productsBeforeFilter - allProducts.length;
+                if (filteredOut > 0) {
+                    console.log("Products filtered out:", 
+                        snapshot.docs
+                            .map(doc => ({id: doc.id, ...doc.data()}))
+                            .filter(p => existingProductIds.includes(p.id))
+                            .map(p => p.title)
+                    );
+                }
+            } else {
+                console.log("Including all products as requested by flag");
             }
 
             // Remove inactive products
+            const beforeInactiveFilter = allProducts.length;
             allProducts = allProducts.filter(p => p.active !== false);
+            console.log(`Removed ${beforeInactiveFilter - allProducts.length} inactive products`);
+            console.log("Final product count:", allProducts.length);
 
             setProducts(allProducts);
         } catch (error) {
@@ -62,11 +86,52 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
 
     // Filter products based on category and search
     const filteredProducts = React.useMemo(() => {
-        return products.filter(product => {
+        console.log("Filtering products. Total products:", products.length);
+        console.log("Search query:", searchQuery);
+        console.log("Selected category:", selectedCategory);
+        
+        // Specifically check for Fruit Salad in the products array
+        const fruitSaladProducts = products.filter(p => 
+            p.title.toLowerCase().includes('fruit salad')
+        );
+        console.log("Products with 'fruit salad' in title:", fruitSaladProducts.map(p => p.title));
+        
+        // Check if we have any products with "fruit" in the title
+        if (searchQuery.toLowerCase().includes('fruit')) {
+            const fruitProducts = products.filter(p => 
+                p.title.toLowerCase().includes('fruit')
+            );
+            console.log("Products with 'fruit' in title:", fruitProducts.map(p => p.title));
+            
+            // If no fruit products found in the current products array
+            if (fruitProducts.length === 0) {
+                console.error("No fruit products found in the current products array. This might indicate filtering issues.");
+                
+                // Check if there might be fruit products in the order that were filtered out
+                if (order && order.items && Array.isArray(order.items)) {
+                    const fruitItemsInOrder = order.items.filter(item => 
+                        item.title.toLowerCase().includes('fruit')
+                    );
+                    console.log("Fruit items already in order:", fruitItemsInOrder.map(i => i.title));
+                }
+            }
+        }
+        
+        const filtered = products.filter(product => {
             const matchesCategory = selectedCategory === 'all' || product.cat === selectedCategory;
             const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
         });
+        
+        console.log("Filtered products count:", filtered.length);
+        
+        // If we're searching for something but got no results, provide more debug info
+        if (searchQuery && filtered.length === 0) {
+            console.error(`No products found matching "${searchQuery}". This might be due to filtering issues.`);
+            console.log("All product titles for reference:", products.map(p => p.title));
+        }
+        
+        return filtered;
     }, [products, selectedCategory, searchQuery]);
 
     // Get unique categories
@@ -239,7 +304,9 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                     variantPrice: cartItem.variant?.price || null,
                     addons: addonsData, // Store selected add-ons
                     addonsTotal: addonsTotal, // Store total price of add-ons for clarity/breakdown if needed
-                    charges: product.charges || [] // Preserve product-specific charges
+                    charges: product.charges || [], // Preserve product-specific charges
+                    newlyAdded: true, // Mark this item as newly added for KOT printing
+                    newlyAddedQty: cartItem.quantity // Track the newly added quantity
                 };
             });
 
@@ -270,7 +337,12 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                                 if (index !== -1) {
                                     mergedItems[index] = {
                                         ...mergedItems[index],
-                                        qnt: (parseInt(mergedItems[index].qnt) || 0) + (parseInt(newItem.qnt) || 0)
+                                        qnt: (parseInt(mergedItems[index].qnt) || 0) + (parseInt(newItem.qnt) || 0),
+                                        // Mark that this item was modified with new quantity
+                                        newlyAdded: true,
+                                        modifiedAt: new Date().toISOString(),
+                                        // Track the newly added quantity separately for KOT printing
+                                        newlyAddedQty: parseInt(newItem.qnt) || 0
                                     };
                                 }
                             } else {
@@ -311,7 +383,12 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                             if (index !== -1) {
                                 mergedItems[index] = {
                                     ...mergedItems[index],
-                                    qnt: (parseInt(mergedItems[index].qnt) || 0) + (parseInt(newItem.qnt) || 0)
+                                    qnt: (parseInt(mergedItems[index].qnt) || 0) + (parseInt(newItem.qnt) || 0),
+                                    // Mark that this item was modified with new quantity
+                                    newlyAdded: true,
+                                    modifiedAt: new Date().toISOString(),
+                                    // Track the newly added quantity separately for KOT printing
+                                    newlyAddedQty: parseInt(newItem.qnt) || 0
                                 };
                             }
                         } else {
@@ -485,6 +562,41 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                                     <i className="ph ph-x"></i>
                                 </button>
                             </div>
+                            
+                            {/* Quick add section for existing items */}
+                            {order && order.items && order.items.length > 0 && (
+                                <div className="bg-blue-50 p-3 rounded-lg mb-4">
+                                    <h3 className="text-sm font-medium text-blue-700 mb-2">
+                                        <i className="ph ph-lightning mr-1"></i>
+                                        Quick add existing items:
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {order.items.map((item, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => handleAddToCart({ 
+                                                    product: {
+                                                        id: item.pid,
+                                                        title: item.title,
+                                                        price: item.price,
+                                                        mrp: item.mrp,
+                                                        imgs: item.thumb ? [item.thumb] : [],
+                                                        cat: item.cat,
+                                                        veg: item.veg,
+                                                        charges: item.charges
+                                                    },
+                                                    quantity: 1
+                                                })}
+                                                className="flex items-center gap-1 py-1.5 px-3 bg-white border border-blue-200 text-blue-700 rounded-full hover:bg-blue-100 transition-colors text-sm"
+                                            >
+                                                <i className="ph ph-plus text-xs"></i>
+                                                <span>{item.title}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {filteredProducts.map(product => (
                                     <POSProductCard
@@ -498,7 +610,24 @@ function POS({ title, tableId, order, variant, checkout = false, onClose }) {
                             </div>
                             {filteredProducts.length === 0 && (
                                 <div className="text-center py-8 text-gray-500">
-                                    No products found matching "{searchQuery}"
+                                    <p>No products found matching "{searchQuery}"</p>
+                                    <p className="mt-2 text-sm">Total products available: {products.length}</p>
+                                    {products.length > 0 && (
+                                        <p className="mt-1 text-sm">
+                                            Try checking for exact spelling or browsing all categories
+                                        </p>
+                                    )}
+                                    {order && order.items && order.items.length > 0 && (
+                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                            <p className="text-blue-700 text-sm font-medium mb-2">
+                                                <i className="ph ph-info mr-1"></i>
+                                                Looking to add more of an existing item?
+                                            </p>
+                                            <p className="text-sm text-blue-600">
+                                                Use the "Quick add existing items" buttons above to easily add more of items already in your order.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

@@ -99,7 +99,26 @@ class BluetoothPrinting {
         }
 
         try {
-            return await this._printReceipt(orderId, 'kot', null, false, channel);
+            const result = await this._printReceipt(orderId, 'kot', null, false, channel);
+            
+            // If printing was successful and we had newly added items, clear their flags
+            if (result && orderId) {
+                const orderResult = await this.getOrderData(orderId);
+                if (orderResult && orderResult.hasNewItems) {
+                    const orderRef = window.sdk.db.collection("Orders").doc(orderId);
+                    const updatedItems = orderResult.full.items.map(item => ({
+                        ...item,
+                        newlyAdded: false,  // Reset the flag after printing
+                        newlyAddedQty: 0    // Reset the newly added quantity as well
+                    }));
+                    
+                    // Update the order with flags cleared
+                    await orderRef.update({ items: updatedItems });
+                    console.log("Cleared newlyAdded flags and quantities after KOT printing");
+                }
+            }
+            
+            return result;
         } catch (error) {
             console.error('Error in printKOT:', error);
             this._showToast(`Failed to print KOT: ${error.message}`, "error");
@@ -143,11 +162,17 @@ class BluetoothPrinting {
      */
     async _printReceipt(orderId, type, paymentMode, autoPrint = false, channel = 'Default') {
         // Fetch order data
-        const orderData = await this.getOrderData(orderId);
-        if (!orderData) {
+        const orderResult = await this.getOrderData(orderId);
+        if (!orderResult) {
             this._showToast("Order not found", "error");
             return false;
         }
+        
+        // For KOT printing, use filtered data if we have newly added items
+        // For bill printing, always use the full order data
+        const orderData = (type === 'kot' && orderResult.hasNewItems) 
+            ? orderResult.filtered 
+            : orderResult.full;
 
         // Use order's channel if not provided
         if (!channel && orderData.priceVariant) {
@@ -389,7 +414,54 @@ class BluetoothPrinting {
             throw new Error("Order not found");
         }
 
-        return orderData;
+        // Check if there are any newly added items
+        const hasNewlyAddedItems = orderData.items && 
+            orderData.items.some(item => item.newlyAdded === true);
+            
+        if (hasNewlyAddedItems) {
+            // Create a filtered version with only newly added items
+            const newlyAddedItems = orderData.items.filter(item => item.newlyAdded === true);
+            
+            // Process the newly added items to show only the newly added quantities
+            const processedItems = newlyAddedItems.map(item => {
+                // If we have a specific newly added quantity, use that
+                if (item.newlyAddedQty && item.newlyAddedQty > 0) {
+                    console.log(`KOT: Item ${item.title} has newlyAddedQty=${item.newlyAddedQty}, original qnt=${item.qnt}`);
+                    return {
+                        ...item,
+                        qnt: item.newlyAddedQty, // Use only the newly added quantity for KOT
+                        originalQnt: item.qnt // Keep track of the original quantity
+                    };
+                }
+                console.log(`KOT: Item ${item.title} has no newlyAddedQty, using full quantity ${item.qnt}`);
+                return item; // Otherwise keep the item as is
+            });
+            
+            // Clone the order data to avoid modifying the original
+            const filteredOrder = JSON.parse(JSON.stringify(orderData));
+            
+            // Add metadata about the filtered items
+            filteredOrder.isPartialKOT = true;
+            filteredOrder.newItemsCount = newlyAddedItems.length;
+            filteredOrder.totalItemsCount = orderData.items.length;
+            
+            // Replace items with only the newly added ones (with adjusted quantities)
+            filteredOrder.items = processedItems;
+            
+            // Return both full and filtered versions
+            return {
+                full: orderData,
+                filtered: filteredOrder,
+                hasNewItems: true
+            };
+        }
+        
+        // If no newly added items, return the full order data
+        return {
+            full: orderData,
+            filtered: orderData,
+            hasNewItems: false
+        };
     }
 
     /**

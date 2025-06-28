@@ -607,17 +607,23 @@ class PrintTemplate {
     _createDefaultKOTSections(orderData = {}) {
         const sections = [];
 
-        // Header section
+        // Check if any items have originalQnt property (indicating quantity additions)
+        const hasQuantityAdditions = orderData.items && orderData.items.some(item => item.originalQnt !== undefined);
+        const kotTitle = orderData.isPartialKOT 
+            ? (hasQuantityAdditions ? 'KOT (ADDITIONS)' : 'KOT (NEW ITEMS)') 
+            : 'KOT';
+
+        // Header section with indication if this is a partial KOT
         sections.push(new PrintSection({
-            template: `KOT\n${orderData.tableId ? `TABLE ${orderData.tableId}` : ''}`,
+            template: `${kotTitle}\n${orderData.tableId ? `TABLE ${orderData.tableId}` : ''}`,
             alignment: 'TextAlign.center',
             fontSize: 24,
             isBold: true
         }));
 
-        // Order details section
+        // Order details section with item count indication if this is a partial KOT
         sections.push(new PrintSection({
-            template: `KOT #: #billNo\nDate: #timestamp\nCustomer: #customerName\nPhone: #customerPhone\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}`,
+            template: `KOT #: #billNo\nDate: #timestamp\n${orderData.isPartialKOT ? `ADDED ITEMS: ${orderData.newItemsCount} (Total: ${orderData.totalItemsCount})\n` : ''}Customer: #customerName\nPhone: #customerPhone\n${orderData.tableId ? `Table: ${orderData.tableId}` : ''}`,
             alignment: 'TextAlign.left',
             fontSize: 20,
             isBold: false

@@ -2008,22 +2008,51 @@ function OrderView({ order, tableId, variant }) {
                     }
                     const orderData = orderDoc.data();
 
+                    // Check if there are newly added items
+                    const newlyAddedItems = orderData.items?.filter(item => item.newlyAdded === true);
+                    const hasNewItems = newlyAddedItems && newlyAddedItems.length > 0;
+                    
+                    // Process the newly added items to show only the newly added quantities
+                    const processedItems = hasNewItems ? newlyAddedItems.map(item => {
+                        // If we have a specific newly added quantity, use that
+                        if (item.newlyAddedQty && item.newlyAddedQty > 0) {
+                            console.log(`Browser KOT: Item ${item.title} has newlyAddedQty=${item.newlyAddedQty}, original qnt=${item.qnt}`);
+                            return {
+                                ...item,
+                                qnt: item.newlyAddedQty, // Use only the newly added quantity for KOT
+                                originalQnt: item.qnt // Keep track of the original quantity
+                            };
+                        }
+                        console.log(`Browser KOT: Item ${item.title} has no newlyAddedQty, using full quantity ${item.qnt}`);
+                        return item; // Otherwise keep the item as is
+                    }) : [];
+                    
+                    // Check if any items have originalQnt property (indicating quantity additions)
+                    const hasQuantityAdditions = processedItems.some(item => item.originalQnt !== undefined);
+                    const kotTitle = hasNewItems 
+                        ? (hasQuantityAdditions ? 'KITCHEN ORDER TICKET (ADDITIONS)' : 'KITCHEN ORDER TICKET (NEW ITEMS)') 
+                        : 'KITCHEN ORDER TICKET';
+                    
                     let kotHtml = `
                         <div style="font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px;">
-                            <h2 style="text-align: center; margin: 0 0 5px 0;">KITCHEN ORDER TICKET</h2>
+                            <h2 style="text-align: center; margin: 0 0 5px 0;">${kotTitle}</h2>
                             <p style="text-align: center; margin: 0 0 10px 0; border-bottom: 1px dashed #000; padding-bottom: 5px;">
                                 ${window.UserSession?.seller?.businessName || 'Your Business'}
                             </p>
                             <p><strong>Order #:</strong> ${orderData.billNo || orderData.id?.substring(0, 6) || 'N/A'}</p>
                             ${orderData.tableId ? `<p><strong>Table:</strong> ${orderData.tableId}</p>` : ''}
                             <p><strong>Time:</strong> ${new Date(orderData.date?.toDate ? orderData.date.toDate() : orderData.date || new Date()).toLocaleTimeString()}</p>
+                            ${hasNewItems ? `<p><strong>Added Items:</strong> ${newlyAddedItems.length} of ${orderData.items.length}</p>` : ''}
                             ${orderData.sourceName ? `<p><strong>Source:</strong> ${orderData.sourceName}</p>` : ''}
                             <hr style="border: none; border-top: 1px dashed #000; margin: 10px 0;" />
                             <p style="font-weight: bold; margin-bottom: 5px;">ITEMS:</p>
                     `;
 
-                    if (orderData.items && orderData.items.length > 0) {
-                        orderData.items.forEach(item => {
+                    // If there are newly added items, only print those with correct quantities
+                    const itemsToPrint = hasNewItems ? processedItems : orderData.items;
+                    
+                    if (itemsToPrint && itemsToPrint.length > 0) {
+                        itemsToPrint.forEach(item => {
                             const quantity = item.quantity || item.qnt || 1;
                             const title = item.title || 'Unknown Item';
                             kotHtml += `<div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
@@ -2033,6 +2062,31 @@ function OrderView({ order, tableId, variant }) {
                                 kotHtml += `<div style="font-size: 10px; padding-left: 15px; margin-bottom: 3px;"><em>Notes: ${item.instructions}</em></div>`;
                             }
                         });
+                        
+                        // After printing newly added items, clear their flags to avoid duplicate printing
+                        if (hasNewItems) {
+                            try {
+                                // Update the items to clear the newlyAdded flag and quantity
+                                const updatedItems = orderData.items.map(item => ({
+                                    ...item,
+                                    newlyAdded: false,
+                                    newlyAddedQty: 0  // Reset the newly added quantity as well
+                                }));
+                                
+                                // Schedule the update to run after printing is complete
+                                setTimeout(async () => {
+                                    try {
+                                        const orderRef = window.sdk.db.collection("Orders").doc(orderData.id);
+                                        await orderRef.update({ items: updatedItems });
+                                        console.log("Cleared newlyAdded flags and quantities after fallback KOT printing");
+                                    } catch (err) {
+                                        console.error("Error clearing newlyAdded flags:", err);
+                                    }
+                                }, 500);
+                            } catch (error) {
+                                console.error("Error preparing flag update:", error);
+                            }
+                        }
                     } else {
                         kotHtml += "<p>No items</p>";
                     }
@@ -2398,6 +2452,7 @@ function OrderView({ order, tableId, variant }) {
                     tableId: tableId,
                     variant: variant,
                     order: orderForPOS,
+                    includeAllProducts: true, // Add this flag to force showing all products
                     onClose: () => {
                         // Unmount and clean up
                         root.unmount();
@@ -3045,8 +3100,8 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
     const [uploading, setUploading] = React.useState(false);
     const [error, setError] = React.useState('');
     const [charges, setCharges] = React.useState([
-        { name: 'CGST', value: '0%', inclusive: false },
-        { name: 'SGST', value: '0%', inclusive: false }
+        { name: 'CGST', value: '2.5%', inclusive: true },
+        { name: 'SGST', value: '2.5%', inclusive: true }
     ]);
     const [categories, setCategories] = React.useState([
         'Food', 'Beverages', 'Appetizers', 'Main Course', 'Desserts', 'Snacks'
@@ -3102,14 +3157,44 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             });
 
             setRecipeItems(product?.recipeItems || []);
-            setCharges(product?.charges?.map(c => ({
-                name: c.name,
-                value: c.type === 'percentage' ? `${c.value}%` : String(c.value),
-                inclusive: c.inclusive
-            })) || [
-                    { name: 'CGST', value: '0%', inclusive: false },
-                    { name: 'SGST', value: '0%', inclusive: false }
+            
+            // If product has charges, use them; otherwise set default GST rates
+            if (product?.charges && product.charges.length > 0) {
+                // Convert existing charges to the format expected by the form
+                const existingCharges = product.charges.map(c => ({
+                    name: c.name,
+                    value: c.type === 'percentage' ? `${c.value}%` : String(c.value),
+                    inclusive: c.inclusive
+                }));
+                
+                // Check if we have both CGST and SGST
+                const hasCGST = existingCharges.some(c => c.name === 'CGST');
+                const hasSGST = existingCharges.some(c => c.name === 'SGST');
+                
+                if (hasCGST && hasSGST) {
+                    // Use existing charges as-is
+                    setCharges(existingCharges);
+                } else {
+                    // Add standard GST if missing
+                    const updatedCharges = [...existingCharges];
+                    
+                    if (!hasCGST) {
+                        updatedCharges.push({ name: 'CGST', value: '2.5%', inclusive: true });
+                    }
+                    
+                    if (!hasSGST) {
+                        updatedCharges.push({ name: 'SGST', value: '2.5%', inclusive: true });
+                    }
+                    
+                    setCharges(updatedCharges);
+                }
+            } else {
+                // Default GST rates for food items (5% total - split as 2.5% CGST and 2.5% SGST)
+                setCharges([
+                    { name: 'CGST', value: '2.5%', inclusive: true },
+                    { name: 'SGST', value: '2.5%', inclusive: true }
                 ]);
+            }
 
             setShowStockManagement(product?.stock !== undefined);
             setUploading(false);
@@ -3359,7 +3444,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                         price: Number(addon.price),
                         inStock: Boolean(addon.inStock)
                     })),
-                // Serialize charges
+                // Serialize charges - properly handle GST and other taxes
                 charges: charges.filter(charge => {
                     const numValue = parseFloat(String(charge.value).replace('%', ''));
                     return charge.name.trim() !== '' && !isNaN(numValue) && numValue > 0;
@@ -3934,6 +4019,20 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                         {/* Tax & Charges */}
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <h4 className="text-sm font-medium text-gray-700 mb-3">Tax & Charges</h4>
+                            
+                            <div className="mb-3 text-xs text-gray-600 p-2 bg-blue-50 rounded-lg">
+                                <p className="font-medium text-blue-700 mb-1">GST Information</p>
+                                <p>• For food items, standard GST is 5% (2.5% CGST + 2.5% SGST)</p>
+                                <p>• For other categories, check the applicable GST rates</p>
+                                <p className="mt-1">
+                                    <strong className="text-green-600">Inclusive:</strong> Price already includes tax (recommended)
+                                    <span className="block text-xs ml-4 mt-0.5">Example: ₹100 item with 5% inclusive GST = ₹95.24 base + ₹4.76 tax</span>
+                                </p>
+                                <p className="mt-1">
+                                    <strong className="text-red-600">Exclusive:</strong> Tax will be added to the listed price
+                                    <span className="block text-xs ml-4 mt-0.5">Example: ₹100 item with 5% exclusive GST = ₹100 base + ₹5 tax = ₹105 total</span>
+                                </p>
+                            </div>
 
                             {charges.map((charge, index) => (
                                 <div key={index} className="mb-3 last:mb-0">
@@ -4006,25 +4105,42 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                                 className="w-4 h-4 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500"
                                             />
                                             <span className="ml-2 text-xs font-medium text-gray-700">Inclusive</span>
+                                            <span className="ml-1 text-xs text-gray-500">(Price includes this tax)</span>
                                         </label>
                                     </div>
                                 </div>
                             ))}
 
                             {/* Add new charge */}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    updateCharge(charges.length, {
-                                        name: '',
-                                        value: '0%', // Initialize as string with % for consistency
-                                        inclusive: false
-                                    });
-                                }}
-                                className="mt-2 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 py-1 px-2 rounded flex items-center w-full justify-center"
-                            >
-                                <i className="ph ph-plus mr-1"></i> Add Charge
-                            </button>
+                            <div className="flex gap-2 mt-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        updateCharge(charges.length, {
+                                            name: '',
+                                            value: '0%', // Initialize as string with % for consistency
+                                            inclusive: true
+                                        });
+                                    }}
+                                    className="flex-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-2 rounded flex items-center justify-center"
+                                >
+                                    <i className="ph ph-plus mr-1"></i> Add Custom Charge
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        // Reset to standard GST rates
+                                        setCharges([
+                                            { name: 'CGST', value: '2.5%', inclusive: true },
+                                            { name: 'SGST', value: '2.5%', inclusive: true }
+                                        ]);
+                                    }}
+                                    className="flex-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 py-2 px-2 rounded flex items-center justify-center"
+                                >
+                                    <i className="ph ph-arrows-clockwise mr-1"></i> Reset to Standard GST
+                                </button>
+                            </div>
                         </div>
 
                         {/* Active Status */}

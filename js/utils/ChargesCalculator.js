@@ -31,6 +31,18 @@ class ChargesCalculator {
         // Ensure charges is an array
         charges = Array.isArray(charges) ? charges : [];
         
+        // Debug logging
+        console.log("ChargesCalculator: Starting calculation with:", {
+            subtotal,
+            discount,
+            charges: charges.map(c => ({
+                name: c.name,
+                value: c.value,
+                type: c.type,
+                inclusive: c.inclusive
+            }))
+        });
+        
         // Apply discount to subtotal (ensure subtotal doesn't go negative)
         const subtotalAfterDiscount = Math.max(0, subtotal - discount);
         
@@ -59,10 +71,16 @@ class ChargesCalculator {
                 
                 // Calculate charge amount based on inclusivity
                 if (charge.inclusive) {
+                    // For inclusive charges, the formula is: 
+                    // chargeAmount = subtotal * (percentage / (100 + percentage))
+                    // This extracts the tax amount that's already included in the price
                     chargeAmount = (subtotalAfterDiscount * percentage) / (100 + percentage);
-                    // For inclusive charges, we don't add to the final amount
+                    console.log(`ChargesCalculator: Inclusive ${charge.name} (${percentage}%): ${chargeAmount.toFixed(2)} (extracted from subtotal)`);
+                    // For inclusive charges, we don't add to the final amount as it's already included
                 } else {
+                    // For exclusive charges, simply calculate the percentage of the subtotal
                     chargeAmount = (subtotalAfterDiscount * percentage) / 100;
+                    console.log(`ChargesCalculator: Exclusive ${charge.name} (${percentage}%): ${chargeAmount.toFixed(2)} (added to final amount)`);
                     finalAmount += chargeAmount;
                 }
                 
@@ -77,6 +95,9 @@ class ChargesCalculator {
                 // Add fixed charge to final amount if not inclusive
                 if (!charge.inclusive) {
                     finalAmount += chargeAmount;
+                    console.log(`ChargesCalculator: Fixed charge ${charge.name}: ${chargeAmount.toFixed(2)} (added to final amount)`);
+                } else {
+                    console.log(`ChargesCalculator: Fixed charge ${charge.name}: ${chargeAmount.toFixed(2)} (included in subtotal)`);
                 }
             }
             
@@ -91,6 +112,18 @@ class ChargesCalculator {
                     bulkTaxHashtag: charge.bulkTaxHashtag || null
                 });
             }
+        });
+        
+        console.log("ChargesCalculator: Final calculation result:", {
+            originalSubtotal: subtotal,
+            discount,
+            subtotalAfterDiscount,
+            calculatedCharges: calculatedCharges.map(c => ({
+                name: c.displayName,
+                amount: c.calculatedAmount,
+                isInclusive: c.isInclusive
+            })),
+            finalAmount
         });
         
         return {
