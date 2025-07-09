@@ -303,7 +303,62 @@
 </head>
 
 <body>
-    <div id="root"> </div>
+    <div id="root">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="fixed inset-0 flex flex-col items-center justify-center bg-white z-50">
+            <div class="mb-4">
+                <i class="ph ph-storefront text-5xl text-primary animate-pulse"></i>
+            </div>
+            <h1 class="text-xl font-semibold text-dark mb-2">Shopto POS</h1>
+            <p class="text-light text-sm mb-4">Loading your store...</p>
+            <div class="w-48 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div id="loading-progress" class="h-full bg-primary rounded-full transition-all duration-300"
+                    style="width: 10%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script loading tracker -->
+    <script>
+        // Initialize loading progress tracking
+        window.loadingProgress = {
+            totalScripts: 0,
+            loadedScripts: 0,
+            updateProgress: function () {
+                const percentage = Math.min(90, Math.floor((this.loadedScripts / this.totalScripts) * 80) + 10);
+                const progressBar = document.getElementById('loading-progress');
+                if (progressBar) {
+                    progressBar.style.width = percentage + '%';
+                }
+            }
+        };
+
+        // Count total scripts
+        window.addEventListener('DOMContentLoaded', function () {
+            const scripts = document.querySelectorAll('script[src]');
+            window.loadingProgress.totalScripts = scripts.length;
+
+            // Add load event listeners to all scripts
+            scripts.forEach(script => {
+                if (script.getAttribute('src')) {
+                    const originalSrc = script.getAttribute('src');
+
+                    // For scripts already loaded
+                    if (script.readyState === 'complete' || script.readyState === 'loaded') {
+                        window.loadingProgress.loadedScripts++;
+                        window.loadingProgress.updateProgress();
+                    }
+
+                    // For scripts still loading
+                    script.addEventListener('load', function () {
+                        window.loadingProgress.loadedScripts++;
+                        window.loadingProgress.updateProgress();
+                    });
+                }
+            });
+        });
+    </script>
+
     <!-- Load our modular Scripts -->
     <script type="text/babel" src="js/utils.js"></script>
     <!-- ChargesCalculator.js must be loaded before components that use it -->

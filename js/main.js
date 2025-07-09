@@ -1,5 +1,23 @@
 // Main JS App Entry Point
 
+// Loading screen management
+const updateLoadingProgress = (percentage) => {
+    const progressBar = document.getElementById('loading-progress');
+    if (progressBar) {
+        progressBar.style.width = `${percentage}%`;
+    }
+};
+
+const removeLoadingScreen = () => {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.classList.add('transition-opacity', 'duration-500', 'opacity-0');
+        setTimeout(() => {
+            loadingScreen.remove();
+        }, 500);
+    }
+};
+
 // Render the main App component
 ReactDOM.createRoot(document.getElementById('root')).render(
     <ProfileProvider>
@@ -8,6 +26,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </OrderProvider>
     </ProfileProvider>
 );
+
+// Set loading to complete and remove loading screen after app is rendered
+updateLoadingProgress(100);
+setTimeout(removeLoadingScreen, 300);
 
 // Load CurrencyData.js if not already loaded
 function loadCurrencyData() {
