@@ -1,5 +1,7 @@
+import { CurrencyData } from './CurrencyData.js';
+
 // UserSession utility for managing user session and profile data
-class UserSession {
+export class UserSession {
     static session = null; // Equivalent to SharedPreferences in Dart
     static seller = null; // ProfileInfo object
     static initialized = false;
@@ -8,33 +10,33 @@ class UserSession {
     // Initialize the session
     static async init() {
         // Check if SDK is available
-        if (typeof window.sdk === 'undefined') {
+        if (typeof sdk === 'undefined') {
             console.warn("SDK not available yet, UserSession initialization delayed");
             // Wait for the page to fully load before trying again
             window.addEventListener('load', () => {
-                setTimeout(() => UserSession.init(), 100);
+                setTimeout(() => this.init(), 100);
             });
             return;
         }
 
         // Prevent multiple initializations
-        if (UserSession.initialized) return;
-        UserSession.initialized = true;
+        if (this.initialized) return;
+        this.initialized = true;
 
         console.log("Initializing UserSession...");
 
         // Load session data from localStorage
-        UserSession.session = localStorage;
+        this.session = localStorage;
 
         try {
             // Fetch user data if we have a seller ID
-            await UserSession.fetchUser();
+            await this.fetchUser();
 
             // Fetch IP info for country/currency
-            await UserSession.fetchIP();
+            await this.fetchIP();
 
             // Initialize permissions
-            await UserSession.initPermissions();
+            await this.initPermissions();
 
             console.log("UserSession initialized successfully");
         } catch (err) {
@@ -45,14 +47,14 @@ class UserSession {
     // Initialize user permissions
     static async initPermissions() {
         try {
-            if (window.sdk?.permissions) {
+            if (sdk?.permissions) {
                 // Get all permissions for the current user
-                UserSession.permissions = await window.sdk.permissions.getUserPermissions();
-                console.log("User permissions loaded:", UserSession.permissions);
+                this.permissions = await sdk.permissions.getUserPermissions();
+                console.log("User permissions loaded:", this.permissions);
             }
         } catch (err) {
             console.error("Error loading user permissions:", err);
-            UserSession.permissions = [];
+            this.permissions = [];
         }
     }
 
@@ -60,18 +62,18 @@ class UserSession {
     static async hasPermission(permissionId) {
         try {
             // If we haven't cached permissions yet, get them now
-            if (!UserSession.permissions) {
-                await UserSession.initPermissions();
+            if (!this.permissions) {
+                await this.initPermissions();
             }
 
             // Check if it's in our cached permissions
-            if (UserSession.permissions && UserSession.permissions.includes(permissionId)) {
+            if (this.permissions && this.permissions.includes(permissionId)) {
                 return true;
             }
 
             // If not in cache or we're not sure, check directly with SDK
-            if (window.sdk?.permissions) {
-                return await window.sdk.permissions.hasPermission(permissionId);
+            if (sdk?.permissions) {
+                return await sdk.permissions.hasPermission(permissionId);
             }
 
             return false;
@@ -88,11 +90,11 @@ class UserSession {
 
     // Check permission by module and action
     static async checkPermission(module, action, silent = true) {
-        const permissionId = UserSession.getPermissionId(module, action);
-        const hasPermission = await UserSession.hasPermission(permissionId);
+        const permissionId = this.getPermissionId(module, action);
+        const hasPermission = await this.hasPermission(permissionId);
 
-        if (!hasPermission && !silent && window.showToast) {
-            window.showToast(`You don't have permission for this action`);
+        if (!hasPermission && !silent && showToast) {
+            showToast(`You don't have permission for this action`);
         }
 
         return hasPermission;
@@ -101,7 +103,7 @@ class UserSession {
     // Fetch user profile data
     static async fetchUser() {
         try {
-            const sid = UserSession.session.getItem("SELLER_ID");
+            const sid = this.session.getItem("SELLER_ID");
             if (!sid) {
                 console.log("No seller ID found in session");
                 return;
@@ -110,17 +112,17 @@ class UserSession {
             console.log(`Fetching user profile for seller ID: ${sid}`);
 
             // Fetch seller profile from Firestore
-            const doc = await window.sdk.profile.get();
+            const doc = await sdk.profile.get();
             if (doc.exists) {
                 // We need to wait until ProfileInfo is defined
-                if (typeof window.ProfileInfo === 'undefined') {
+                if (typeof ProfileInfo === 'undefined') {
                     console.warn("ProfileInfo not available yet, using raw data");
-                    UserSession.seller = {
+                    this.seller = {
                         id: doc.id,
                         ...doc.data()
                     };
                 } else {
-                    UserSession.seller = window.ProfileInfo.fromDoc(doc);
+                    this.seller = ProfileInfo.fromDoc(doc);
                 }
                 console.log("User profile fetched successfully");
             } else {
@@ -135,8 +137,8 @@ class UserSession {
     static async fetchIP() {
         try {
             // Skip if we already have country and currency
-            if (UserSession.session.getItem("COUNTRY") &&
-                UserSession.session.getItem("CURRENCY_CODE")) {
+            if (this.session.getItem("COUNTRY") &&
+                this.session.getItem("CURRENCY_CODE")) {
                 return;
             }
 
@@ -145,48 +147,48 @@ class UserSession {
             const locationData = await response.json();
 
             // Set country and currency
-            UserSession.session.setItem("COUNTRY", locationData.country || "IN");
-            UserSession.session.setItem("CURRENCY_CODE", locationData.currency || "INR");
+            this.session.setItem("COUNTRY", locationData.country || "IN");
+            this.session.setItem("CURRENCY_CODE", locationData.currency || "INR");
         } catch (e) {
             console.error("Error fetching IP info:", e);
             // Default to India and INR
-            UserSession.session.setItem("COUNTRY", "IN");
-            UserSession.session.setItem("CURRENCY_CODE", "INR");
+            this.session.setItem("COUNTRY", "IN");
+            this.session.setItem("CURRENCY_CODE", "INR");
         }
     }
 
     // Get country code
     static getCountry() {
-        return UserSession.session?.getItem("COUNTRY") || "IN";
+        return this.session?.getItem("COUNTRY") || "IN";
     }
 
     // Check if user is in India
     static inIndia() {
-        return UserSession.getCountry() === "IN";
+        return this.getCountry() === "IN";
     }
 
     // Get currency code
     static getCurrencyCode() {
-        const currencyCode = UserSession.session?.getItem("CURRENCY_CODE");
+        const currencyCode = this.session?.getItem("CURRENCY_CODE");
         return currencyCode || "INR";
     }
 
     // Get currency symbol
     static getCurrency() {
-        const currencyCode = UserSession.getCurrencyCode();
-        const currency = window.CurrencyData?.getCurrencyByCode(currencyCode);
+        const currencyCode = this.getCurrencyCode();
+        const currency = CurrencyData?.getCurrencyByCode(currencyCode);
         return currency?.symbol || "₹";
     }
 
     // Set currency code
     static setCurrencyCode(code) {
-        UserSession.session?.setItem("CURRENCY_CODE", code);
+        this.session?.setItem("CURRENCY_CODE", code);
     }
 
     // Run a function only once (based on a flag in session)
     static runOnce(check) {
-        if (UserSession.session.getItem(check) === null) {
-            UserSession.session.setItem(check, "true");
+        if (this.session.getItem(check) === null) {
+            this.session.setItem(check, "true");
             return true;
         }
         return false;
@@ -194,10 +196,10 @@ class UserSession {
 
     // Run after a certain count
     static runAfter(check, count) {
-        let c = parseInt(UserSession.session.getItem(check) || "0");
+        let c = parseInt(this.session.getItem(check) || "0");
 
         if (c < count) {
-            UserSession.session.setItem(check, (c + 1).toString());
+            this.session.setItem(check, (c + 1).toString());
             return false;
         }
 
@@ -206,27 +208,19 @@ class UserSession {
 
     // Run every nth time
     static runEvery(check, count) {
-        let c = parseInt(UserSession.session.getItem(check) || "0");
+        let c = parseInt(this.session.getItem(check) || "0");
 
         if (c < count) {
-            UserSession.session.setItem(check, (c + 1).toString());
+            this.session.setItem(check, (c + 1).toString());
             return false;
         }
 
-        UserSession.session.setItem(check, "1");
+        this.session.setItem(check, "1");
         return true;
     }
 
     // Check if seller is logged in
     static isSellerLoggedIn() {
-        return UserSession.seller?.id != null;
+        return this.seller?.id != null;
     }
 }
-
-// Make UserSession available globally
-window.UserSession = UserSession;
-
-// Initialize UserSession when the script loads, but with a slight delay to ensure SDK is loaded
-setTimeout(() => {
-    UserSession.init().catch(err => console.error("Error initializing UserSession:", err));
-}, 100); 

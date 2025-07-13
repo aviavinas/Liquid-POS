@@ -1,5 +1,5 @@
 // Toast utility for showing notifications
-function showToast(message, type = 'info', duration = 3000) {
+export function showToast(message, type = 'info', duration = 3000) {
     // Check if toast container exists, if not create it
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -64,6 +64,3 @@ function showToast(message, type = 'info', duration = 3000) {
         }, 300);
     }, duration);
 }
-
-// Add to window object for global access
-window.showToast = showToast; 

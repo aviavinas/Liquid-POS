@@ -1,5 +1,4 @@
-// CurrencyData.js - Global currency data for the application
-class CurrencyData {
+export class CurrencyData {
     // Static list of all supported currencies
     static currencies = [
         { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
@@ -53,6 +52,3 @@ class CurrencyData {
         })}`;
     }
 }
-
-// Make CurrencyData available globally
-window.CurrencyData = CurrencyData;

@@ -1,5 +1,10 @@
+
+import { UserSession } from './utils/UserSession.js';
+import { ModalManager } from './components/ModalManager.js';
+import { CurrencyData } from './utils/CurrencyData.js';
+
 // Utility function to safely parse date
-function parseDate(date) {
+export function parseDate(date) {
     if (!date) return null;
 
     try {
@@ -33,7 +38,7 @@ function parseDate(date) {
 }
 
 // Utility function to calculate time duration
-function getTimeDuration(date) {
+export function getTimeDuration(date) {
     const parsedDate = parseDate(date);
     if (!parsedDate) return null;
 
@@ -86,23 +91,23 @@ function getTimeDuration(date) {
 }
 
 // Utility function for logging
-function pp(message) {
+export function pp(message) {
     console.log(message);
 }
 
 // Utility function to format currency
-function formatCurrency(amount) {
-    if (window.CurrencyData) {
-        const currencyCode = window.UserSession?.getCurrencyCode() || "INR";
-        return window.CurrencyData.formatAmount(amount, currencyCode);
+export function formatCurrency(amount) {
+    if (CurrencyData) {
+        const currencyCode = UserSession?.getCurrencyCode() || "INR";
+        return CurrencyData.formatAmount(amount, currencyCode);
     }
     // Fallback to default formatting if CurrencyData is not available
-    const currencySymbol = window.UserSession?.getCurrency() || '₹';
+    const currencySymbol = UserSession?.getCurrency() || '₹';
     return `${currencySymbol}${Number(amount).toLocaleString('en-IN')}`;
 }
 
 // Utility function to format date
-function formatDate(date, format = 'short') {
+export function formatDate(date, format = 'short') {
     const parsedDate = parseDate(date);
     if (!parsedDate) return '';
 
@@ -144,7 +149,7 @@ function formatDate(date, format = 'short') {
 }
 
 // Utility functions to match Flutter DateModifiers extension
-function prettyTime(date) {
+export function prettyTime(date) {
     const parsedDate = parseDate(date);
     if (!parsedDate) return '';
 
@@ -180,7 +185,7 @@ function prettyTime(date) {
     return `${years} years ago`;
 }
 
-function prettyShortTime(date) {
+export function prettyShortTime(date) {
     const parsedDate = parseDate(date);
     if (!parsedDate) return '';
 
@@ -216,7 +221,7 @@ function prettyShortTime(date) {
     return `${years} years`;
 }
 
-function tinyDate(date) {
+export function tinyDate(date) {
     const parsedDate = parseDate(date);
     if (!parsedDate) return '';
 
@@ -253,7 +258,7 @@ function tinyDate(date) {
     }
 }
 
-function tinyDateTime(date) {
+export function tinyDateTime(date) {
     const parsedDate = parseDate(date);
     if (!parsedDate) return '';
 
@@ -303,7 +308,7 @@ function tinyDateTime(date) {
 }
 
 // Format duration as HH:MM
-function formatDurationHM(durationMs) {
+export function formatDurationHM(durationMs) {
     if (!durationMs || isNaN(durationMs)) return '00:00';
 
     const hours = Math.floor(durationMs / (1000 * 60 * 60));
@@ -313,7 +318,7 @@ function formatDurationHM(durationMs) {
 }
 
 // Format duration as HH:MM:SS
-function formatDurationHMS(durationMs) {
+export function formatDurationHMS(durationMs) {
     if (!durationMs || isNaN(durationMs)) return '00:00:00';
 
     const hours = Math.floor(durationMs / (1000 * 60 * 60));
@@ -324,15 +329,15 @@ function formatDurationHMS(durationMs) {
 }
 
 // Helper function for two-digit formatting
-function toTwoDigits(n) {
+export function toTwoDigits(n) {
     return n.toString().padStart(2, '0');
 }
 
 // Utility function to show toast notifications
-function showToast(message, type = 'success') {
-    if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
+export function showToast(message, type = 'success') {
+    if (ModalManager && typeof ModalManager.showToast === 'function') {
         // Use ModalManager if available
-        window.ModalManager.showToast(message, {
+        ModalManager.showToast(message, {
             type: type,
             position: 'top-right'
         });
@@ -376,10 +381,10 @@ function showToast(message, type = 'success') {
 }
 
 // Confirm dialog
-function confirmDialog({ title, content, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm, onCancel }) {
-    if (window.ModalManager && typeof window.ModalManager.confirm === 'function') {
+export function confirmDialog({ title, content, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm, onCancel }) {
+    if (ModalManager && typeof ModalManager.confirm === 'function') {
         // Use ModalManager if available
-        window.ModalManager.confirm({
+        ModalManager.confirm({
             title: title,
             message: content,
             confirmText: confirmText,
@@ -465,7 +470,7 @@ function confirmDialog({ title, content, confirmText = 'Confirm', cancelText = '
 }
 
 // Utility function for modal/dialog classes (to reduce duplication across components)
-function getModalClasses({ isMobile, isClosing, customBaseClasses, customMobileWidthClasses, customDesktopWidthClasses }) {
+export function getModalClasses({ isMobile, isClosing, customBaseClasses, customMobileWidthClasses, customDesktopWidthClasses }) {
     // Default base classes if not provided
     const baseClasses = customBaseClasses || "bg-white overflow-y-auto shadow-xl custom-scrollbar";
 
@@ -487,15 +492,15 @@ function getModalClasses({ isMobile, isClosing, customBaseClasses, customMobileW
 }
 
 // Get overlay classes for modals
-function getModalOverlayClasses(isClosing, zIndex = "z-50") {
+export function getModalOverlayClasses(isClosing, zIndex = "z-50") {
     return `fixed inset-0 bg-black transition-opacity duration-300 ${zIndex} ${isClosing ? 'bg-opacity-0' : 'bg-opacity-50'}`;
 }
 
 // Create a modal
-function createModal(content, { title, footer, onClose, baseClasses, headerClasses, bodyClasses, footerClasses, showCloseButton = true, closeOnBackdropClick = true } = {}) {
-    if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+export function createModal(content, { title, footer, onClose, baseClasses, headerClasses, bodyClasses, footerClasses, showCloseButton = true, closeOnBackdropClick = true } = {}) {
+    if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
         // Use ModalManager if available
-        return window.ModalManager.createCenterModal({
+        return ModalManager.createCenterModal({
             id: 'modal-' + Date.now(),
             title: title || '',
             content: content,
@@ -580,17 +585,17 @@ function createModal(content, { title, footer, onClose, baseClasses, headerClass
 }
 
 // Helper function to close a modal
-function closeModal(modalContainer) {
+export function closeModal(modalContainer) {
     if (modalContainer && document.body.contains(modalContainer)) {
         document.body.removeChild(modalContainer);
     }
 }
 
 // Create a sliding panel
-function createSlidingPanel(content, { title, position = 'right', onClose, customWidth, customBaseClasses } = {}) {
-    if (window.ModalManager && typeof window.ModalManager.createSideDrawerModal === 'function' && position === 'right') {
+export function createSlidingPanel(content, { title, position = 'right', onClose, customWidth, customBaseClasses } = {}) {
+    if (ModalManager && typeof ModalManager.createSideDrawerModal === 'function' && position === 'right') {
         // Use ModalManager if available (but only for right-side panels, as that's what ModalManager supports)
-        return window.ModalManager.createSideDrawerModal({
+        return ModalManager.createSideDrawerModal({
             id: 'sliding-panel-' + Date.now(),
             title: title || '',
             content: content,
@@ -670,14 +675,14 @@ function createSlidingPanel(content, { title, position = 'right', onClose, custo
 }
 
 // Helper function to close a sliding panel
-function closeSlidingPanel(panelContainer) {
+export function closeSlidingPanel(panelContainer) {
     if (panelContainer && document.body.contains(panelContainer)) {
         document.body.removeChild(panelContainer);
     }
 }
 
 // Get orderSource from an order object, matching the Flutter MOrder orderSource getter
-function getOrderSource(order) {
+export function getOrderSource(order) {
     if (!order) return null;
     return order.priceVariant || order.tableId || null;
 } 

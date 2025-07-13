@@ -1,13 +1,17 @@
+import { sdk } from '../sdk.js';
+import { useProfile } from '../contexts/ProfileContext.js';
+
 // Sidebar Navigation Component
-function SidebarNav({ tabs, activeTab, setActiveTab }) {
+export function SidebarNav({ tabs, activeTab, setActiveTab }) {
+    const profileContext = useProfile();
     return (
         <div className="hidden md:flex flex-col w-64 border-r h-full fixed left-0 top-0 pt-16" style={{ backgroundColor: "#fff8f8" }}>
             <div className="px-3 py-8">
                 <div className="flex items-center justify-center mb-8">
                     <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {window.sdk?.profile?.avatar || window.useProfile?.()?.avatar ? (
+                        {sdk?.profile?.avatar || profileContext?.avatar ? (
                             <img
-                                src={window.sdk?.profile?.avatar || window.useProfile?.()?.avatar}
+                                src={sdk?.profile?.avatar || profileContext?.avatar}
                                 alt="Store Logo"
                                 className="w-12 h-12 object-contain"
                             />
@@ -16,8 +20,8 @@ function SidebarNav({ tabs, activeTab, setActiveTab }) {
                         )}
                     </div>
                     <div className="ml-3">
-                        <h2 className="text-xl font-bold text-gray-800">{window.useProfile?.()?.businessName || "Liquid POS"}</h2>
-                        <p className="text-sm text-gray-500">{window.useProfile?.()?.phone || "Restaurant Management"}</p>
+                        <h2 className="text-xl font-bold text-gray-800">{profileContext?.businessName || "Liquid POS"}</h2>
+                        <p className="text-sm text-gray-500">{profileContext?.phone || "Restaurant Management"}</p>
                     </div>
                 </div>
                 <div className="flex flex-col space-y-2">
@@ -41,7 +45,7 @@ function SidebarNav({ tabs, activeTab, setActiveTab }) {
 }
 
 // Bottom Navigation Component
-function BottomNav({ tabs, activeTab, setActiveTab }) {
+export function BottomNav({ tabs, activeTab, setActiveTab }) {
     return (
         <nav className="md:hidden fixed bottom-0 w-full bg-gradient-to-t from-white to-warm-bg border-t border-gray-200 shadow-section z-40">
             <div className="grid grid-cols-5 h-16">
@@ -66,4 +70,4 @@ function BottomNav({ tabs, activeTab, setActiveTab }) {
             </div>
         </nav>
     );
-} 
+}

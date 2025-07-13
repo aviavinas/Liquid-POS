@@ -1,5 +1,11 @@
+import { useState } from 'react';
+import { prettyTime, getOrderSource } from '../utils.js';
+import { ModalManager } from './ModalManager.js';
+import { BluetoothPrinting } from '../utils/BluetoothPrinting.js';
+import { UserSession } from '../utils/UserSession.js';
+
 // Table Card Component
-function TableCard({ title, orders, duration, status, onTap, onLongPress, compact = false }) {
+export function TableCard({ title, orders, duration, status, onTap, onLongPress, compact = false }) {
     // Calculate color based on last placed date (similar to getColor in Flutter)
     const getColor = (duration) => {
         if (!duration) return {
@@ -120,7 +126,7 @@ function TableCard({ title, orders, duration, status, onTap, onLongPress, compac
 }
 
 // Order Thumb Component
-function OrderThumb({ order }) {
+export function OrderThumb({ order }) {
     return (
         <div className="p-2 pl-4 pr-4">
             <div className="bg-gradient-to-br from-warm-bg to-white h-[150px] w-[150px] relative rounded-xl shadow-sm overflow-hidden border border-gray-100">
@@ -151,8 +157,8 @@ function OrderThumb({ order }) {
 }
 
 // Order Group Tile Component
-function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
-    const [isExpanded, setIsExpanded] = React.useState(false);
+export function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
+    const [isExpanded, setIsExpanded] = useState(false);
 
     // Calculate time ago
     const orderDate = order.date instanceof Date ? order.date : new Date(order.date?.seconds ? order.date.seconds * 1000 : order.date);
@@ -170,8 +176,8 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
     const isCompletedOrder = order.currentStatus?.label === "COMPLETED" || order.paid === true;
 
     const handleOrderClick = () => {
-        if (window.ModalManager && typeof window.ModalManager.createSideDrawerModal === 'function') {
-            const modal = window.ModalManager.createSideDrawerModal({
+        if (ModalManager && typeof ModalManager.createSideDrawerModal === 'function') {
+            const modal = ModalManager.createSideDrawerModal({
                 id: `order-details-modal-${order.id}`,
                 title: 'Order Details',
                 content: `<div class="p-4 text-center">
@@ -191,11 +197,11 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                     // Add print functions to modalControl
                     modalControl.printBill = async (orderId) => {
                         try {
-                            if (window.BluetoothPrinting) {
-                                await window.BluetoothPrinting.printBill(orderId || order.id);
+                            if (BluetoothPrinting) {
+                                await BluetoothPrinting.printBill(orderId || order.id);
                                 // Show success message
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    window.ModalManager.showToast("Bill printed successfully", { type: "success" });
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    ModalManager.showToast("Bill printed successfully", { type: "success" });
                                 } else {
                                     alert("Bill printed successfully");
                                 }
@@ -206,8 +212,8 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                         } catch (error) {
                             console.error("Error printing bill:", error);
                             // Show error message
-                            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                window.ModalManager.showToast("Failed to print bill: " + error.message, { type: "error" });
+                            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                ModalManager.showToast("Failed to print bill: " + error.message, { type: "error" });
                             } else {
                                 alert("Failed to print bill: " + error.message);
                             }
@@ -216,11 +222,11 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
 
                     modalControl.printKOT = async (orderId) => {
                         try {
-                            if (window.BluetoothPrinting) {
-                                await window.BluetoothPrinting.printKOT(orderId || order.id);
+                            if (BluetoothPrinting) {
+                                await BluetoothPrinting.printKOT(orderId || order.id);
                                 // Show success message
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    window.ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
                                 } else {
                                     alert("Kitchen order printed successfully");
                                 }
@@ -231,8 +237,8 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                         } catch (error) {
                             console.error("Error printing kitchen order:", error);
                             // Show error message
-                            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                window.ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
+                            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
                             } else {
                                 alert("Failed to print kitchen order: " + error.message);
                             }
@@ -242,7 +248,7 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                     // Create a temporary div to render the React component
                     const tempDiv = document.createElement('div');
                     ReactDOM.render(
-                        React.createElement(OrderDetailsContent, {
+                        createElement(OrderDetailsContent, {
                             order: order,
                             modalControl: modalControl,
                             onAccept,
@@ -263,7 +269,7 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
 
             try {
                 ReactDOM.render(
-                    React.createElement(OrderDetailsModal, {
+                    createElement(OrderDetailsModal, {
                         order: order,
                         onClose: () => {
                             ReactDOM.unmountComponentAtNode(modalContainer);
@@ -323,7 +329,7 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-sm md:text-base font-semibold text-red-600">{window.UserSession?.getCurrency()}{totalAmount}</div>
+                            <div className="text-sm md:text-base font-semibold text-red-600">{UserSession?.getCurrency()}{totalAmount}</div>
                             <div className="text-xs text-gray-500">#{order.id?.slice(-6)}</div>
                         </div>
                     </div>
@@ -411,11 +417,11 @@ function OrderGroupTile({ order, onAccept, onReject, onPrintBill }) {
 }
 
 // Order Details Modal Component
-function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) {
+export function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
 
     // Use ChargesCalculator for consistent charge calculations
-    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+    const chargesCalculation = ChargesCalculator?.calculateCharges(
         totalAmount,
         order.charges || [],
         order.discount || 0
@@ -524,10 +530,10 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                         <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                                         <div className="flex justify-between items-center mt-1">
                                             <p className="text-xs text-gray-500">
-                                                {item.quantity || 1} x {window.UserSession?.getCurrency()}{item.price || 0}
+                                                {item.quantity || 1} x {UserSession?.getCurrency()}{item.price || 0}
                                             </p>
                                             <p className="font-medium text-sm">
-                                                {window.UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
+                                                {UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
                                             </p>
                                         </div>
                                     </div>
@@ -545,7 +551,7 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                         <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Item Total</span>
-                                <span className="font-medium">{window.UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
+                                <span className="font-medium">{UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
                             </div>
 
                             {/* Display each charge */}
@@ -553,7 +559,7 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                 return (
                                     <div key={index} className="flex justify-between">
                                         <span className="text-gray-600">{charge.displayName}</span>
-                                        <span className="font-medium">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
+                                        <span className="font-medium">{UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                                     </div>
                                 );
                             })}
@@ -562,13 +568,13 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                             {order.discount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>Discount</span>
-                                    <span>- {window.UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
+                                    <span>- {UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
                                 </div>
                             )}
 
                             <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                                 <span className="font-medium">Grand Total</span>
-                                <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
+                                <span className="font-semibold text-red-600">{UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                             </div>
                             {order.payMode && (
                                 <div className="flex justify-between items-center pt-1 text-xs">
@@ -644,35 +650,35 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                     onClick={async (e) => {
                                         e.stopPropagation();
                                         try {
-                                            if (window.BluetoothPrinting) {
+                                            if (BluetoothPrinting) {
                                                 // Show connecting message
-                                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                                    if (!window.BluetoothPrinting.connected) {
-                                                        window.ModalManager.showToast("Connecting to printer...", { type: "info" });
+                                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                                    if (!BluetoothPrinting.connected) {
+                                                        ModalManager.showToast("Connecting to printer...", { type: "info" });
                                                     } else {
-                                                        window.ModalManager.showToast("Printing kitchen order...", { type: "info" });
+                                                        ModalManager.showToast("Printing kitchen order...", { type: "info" });
                                                     }
                                                 }
 
                                                 // Print the kitchen order directly
-                                                await window.BluetoothPrinting.printKOT(order.id);
+                                                await BluetoothPrinting.printKOT(order.id);
 
                                                 // Show success message
-                                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                                    window.ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
+                                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                                    ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
                                                 }
                                             } else if (onPrintBill) {
                                                 onPrintBill(order.id);
                                             } else {
                                                 console.error("BluetoothPrinting service not available");
-                                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                                    window.ModalManager.showToast("Printing service not available", { type: "error" });
+                                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                                    ModalManager.showToast("Printing service not available", { type: "error" });
                                                 }
                                             }
                                         } catch (error) {
                                             console.error("Error printing kitchen order:", error);
-                                            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                                window.ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
+                                            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                                ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
                                             }
                                         }
                                         onClose();
@@ -690,7 +696,7 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
                                 <button
                                     id="print-bill-button"
                                     data-action="print-bill"
-                                    onclick="if(window.modalPrintBill) { window.modalPrintBill(); return false; }"
+                                    onclick="if(modalPrintBill) { modalPrintBill(); return false; }"
                                     className="w-full py-3 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg flex items-center justify-center gap-2 hover:from-red-700 hover:to-red-600 transition-colors text-sm font-medium shadow-sm"
                                 >
                                     <i className="ph ph-printer text-lg"></i>
@@ -706,11 +712,11 @@ function OrderDetailsModal({ order, onClose, onAccept, onReject, onPrintBill }) 
 }
 
 // Order Details Content Component for use with ModalManager
-function OrderDetailsContent({ order, modalControl }) {
+export function OrderDetailsContent({ order, modalControl }) {
     const totalAmount = order.items?.reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || item.qnt || 1)), 0) || 0;
 
     // Use ChargesCalculator for consistent charge calculations
-    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+    const chargesCalculation = ChargesCalculator?.calculateCharges(
         totalAmount,
         order.charges || [],
         order.discount || 0
@@ -740,14 +746,14 @@ function OrderDetailsContent({ order, modalControl }) {
         }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         modalControl.setTitle('Order Details');
 
         // Set up the print bill handler for DOM access
         modalControl.printBillHandler = handlePrintBill;
 
         // Set up a global handler that can be called from onclick HTML attribute
-        window.modalPrintBill = () => {
+        modalPrintBill = () => {
             console.log("Print bill triggered from global handler");
             handlePrintBill();
             return false; // Prevent default
@@ -767,32 +773,32 @@ function OrderDetailsContent({ order, modalControl }) {
 
         // Cleanup function
         return () => {
-            window.modalPrintBill = null;
+            modalPrintBill = null;
         };
     }, []);
 
     function handlePrintBill() {
         console.log("Printing bill");
         try {
-            if (window.BluetoothPrinting) {
+            if (BluetoothPrinting) {
                 console.log("Printing bill...", order.id);
                 // Print the bill directly
-                window.BluetoothPrinting.printBill(order.id);
+                BluetoothPrinting.printBill(order.id);
 
                 // Show success message
-                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                    window.ModalManager.showToast("Bill printed successfully", { type: "success" });
+                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                    ModalManager.showToast("Bill printed successfully", { type: "success" });
                 }
             } else {
                 console.error("BluetoothPrinting service not available");
-                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                    window.ModalManager.showToast("Printing service not available", { type: "error" });
+                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                    ModalManager.showToast("Printing service not available", { type: "error" });
                 }
             }
         } catch (error) {
             console.error("Error printing bill:", error);
-            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                window.ModalManager.showToast("Failed to print bill: " + error.message, { type: "error" });
+            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                ModalManager.showToast("Failed to print bill: " + error.message, { type: "error" });
             }
         }
         modalControl.close();
@@ -859,10 +865,10 @@ function OrderDetailsContent({ order, modalControl }) {
                                 <h4 className="font-medium text-gray-900 truncate">{item.title}</h4>
                                 <div className="flex justify-between items-center mt-1">
                                     <p className="text-xs text-gray-500">
-                                        {item.quantity || 1} x {window.UserSession?.getCurrency()}{item.price || 0}
+                                        {item.quantity || 1} x {UserSession?.getCurrency()}{item.price || 0}
                                     </p>
                                     <p className="font-medium text-sm">
-                                        {window.UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
+                                        {UserSession?.getCurrency()}{(item.quantity || 1) * (item.price || 0)}
                                     </p>
                                 </div>
                             </div>
@@ -880,7 +886,7 @@ function OrderDetailsContent({ order, modalControl }) {
                 <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                         <span className="text-gray-600">Item Total</span>
-                        <span className="font-medium">{window.UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
+                        <span className="font-medium">{UserSession?.getCurrency()}{totalAmount.toFixed(2)}</span>
                     </div>
 
                     {/* Display each charge */}
@@ -888,7 +894,7 @@ function OrderDetailsContent({ order, modalControl }) {
                         return (
                             <div key={index} className="flex justify-between">
                                 <span className="text-gray-600">{charge.displayName}</span>
-                                <span className="font-medium">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
+                                <span className="font-medium">{UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                             </div>
                         );
                     })}
@@ -897,13 +903,13 @@ function OrderDetailsContent({ order, modalControl }) {
                     {order.discount > 0 && (
                         <div className="flex justify-between text-green-600">
                             <span>Discount</span>
-                            <span>- {window.UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
+                            <span>- {UserSession?.getCurrency()}{order.discount.toFixed(2)}</span>
                         </div>
                     )}
 
                     <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                         <span className="font-medium">Grand Total</span>
-                        <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
+                        <span className="font-semibold text-red-600">{UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                     </div>
                     {order.payMode && (
                         <div className="flex justify-between items-center pt-1 text-xs">
@@ -977,35 +983,35 @@ function OrderDetailsContent({ order, modalControl }) {
                     onClick={async (e) => {
                         e.stopPropagation();
                         try {
-                            if (window.BluetoothPrinting) {
+                            if (BluetoothPrinting) {
                                 // Show connecting message
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    if (!window.BluetoothPrinting.connected) {
-                                        window.ModalManager.showToast("Connecting to printer...", { type: "info" });
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    if (!BluetoothPrinting.connected) {
+                                        ModalManager.showToast("Connecting to printer...", { type: "info" });
                                     } else {
-                                        window.ModalManager.showToast("Printing kitchen order...", { type: "info" });
+                                        ModalManager.showToast("Printing kitchen order...", { type: "info" });
                                     }
                                 }
 
                                 // Print the kitchen order directly
-                                await window.BluetoothPrinting.printKOT(order.id);
+                                await BluetoothPrinting.printKOT(order.id);
 
                                 // Show success message
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    window.ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    ModalManager.showToast("Kitchen order printed successfully", { type: "success" });
                                 }
                             } else if (onPrintBill) {
                                 onPrintBill(order.id);
                             } else {
                                 console.error("BluetoothPrinting service not available");
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    window.ModalManager.showToast("Printing service not available", { type: "error" });
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    ModalManager.showToast("Printing service not available", { type: "error" });
                                 }
                             }
                         } catch (error) {
                             console.error("Error printing kitchen order:", error);
-                            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                window.ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
+                            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                ModalManager.showToast("Failed to print kitchen order: " + error.message, { type: "error" });
                             }
                         }
                         modalControl.close();
@@ -1021,7 +1027,7 @@ function OrderDetailsContent({ order, modalControl }) {
                 <button
                     id="print-bill-button"
                     data-action="print-bill"
-                    onclick="if(window.modalPrintBill) { window.modalPrintBill(); return false; }"
+                    onclick="if(modalPrintBill) { modalPrintBill(); return false; }"
                     className="w-full py-3 bg-gradient-to-r from-red-600 to-red-500 text-white rounded-lg flex items-center justify-center gap-2 hover:from-red-700 hover:to-red-600 transition-colors text-sm font-medium shadow-sm"
                 >
                     <i className="ph ph-printer text-lg"></i>
@@ -1033,7 +1039,7 @@ function OrderDetailsContent({ order, modalControl }) {
 }
 
 // No Orders Found Component
-function NoOrdersFound() {
+export function NoOrdersFound() {
     return (
         <div className="flex flex-col items-center justify-center py-20 opacity-30">
             <i className="ph ph-table text-5xl text-red-800 mb-4"></i>
@@ -1042,4 +1048,4 @@ function NoOrdersFound() {
             </p>
         </div>
     );
-} 
+}

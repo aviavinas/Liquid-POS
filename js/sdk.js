@@ -43,10 +43,10 @@ const permissions = [
 ];
 
 // Create SDK instance with permission schema
-const sdk = new window.ShoptoSDK(permissions);
+export const sdk = new window.ShoptoSDK(permissions);
 
 // Helper function to show toast messages
-function showToast(message, type = 'success') {
+export function showToast(message, type = 'success') {
     // Create toast element
     const toast = document.createElement('div');
     toast.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-500' : 'bg-red-500'
@@ -65,13 +65,9 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Export the SDK and showToast utility
-window.sdk = sdk;
-window.showToast = showToast;
-
 // Log analytics event for app initialization
 if (sdk.analytics) {
     sdk.analytics.logEvent('app_initialized', {
         timestamp: new Date().toISOString()
     });
-} 
+}

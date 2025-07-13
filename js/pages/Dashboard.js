@@ -1,6 +1,22 @@
+import { useState, useRef, useMemo, useEffect } from 'react';
+import DashboardCard from '../components/DashboardCard.js';
+import { TableCard } from '../components/TableCard.js';
+import { AddTableModal, RenameRoomModal } from '../components/Modals.js';
+import { CurrencyData } from '../utils/CurrencyData.js';
+import { useProfile } from '../contexts/ProfileContext.js';
+import { useOrders } from '../contexts/OrderContext.js';
+import { ModalManager } from '../components/ModalManager.js';
+import { parseDate, getTimeDuration } from '../utils.js';
+import { showToast } from '../utils/Toast.js';
+import { UserSession } from '../utils/UserSession.js';
+import { ModalManager } from '../components/ModalManager.js';
+import { OrderRoom } from '../components/Modals.js';
+import { sdk } from '../sdk.js';
+import { NoOrdersFound, OrderGroupTile } from '../components/TableCard.js';
+
 // Dashboard Component
-function Dashboard() {
-    const { profile: seller, tables: profileTables } = window.useProfile ? window.useProfile() : { profile: null, tables: [] };
+export default function Dashboard() {
+    const { profile: seller, tables: profileTables } = useProfile ? useProfile() : { profile: null, tables: [] };
     const {
         activeOrders,
         completedOrders,
@@ -9,7 +25,7 @@ function Dashboard() {
         getOrdersByTableAndChannel,
         loadCompletedOrders,
         getOrdersForSource
-    } = window.useOrders ? window.useOrders() : {
+    } = useOrders ? useOrders() : {
         activeOrders: [],
         completedOrders: [],
         isLoading: true,
@@ -19,28 +35,28 @@ function Dashboard() {
         getOrdersForSource: () => []
     };
 
-    const [error, setError] = React.useState(null);
-    const [isProfileOpen, setIsProfileOpen] = React.useState(false);
-    const [showCompletedOrders, setShowCompletedOrders] = React.useState(false);
-    const [qrOrders, setQrOrders] = React.useState([]);
-    const [loadingQrOrders, setLoadingQrOrders] = React.useState(true);
-    const [errorQrOrders, setErrorQrOrders] = React.useState(null);
-    const [loadedItemCount, setLoadedItemCount] = React.useState(50); // Initially load 50 items
-    const [isLoadingMore, setIsLoadingMore] = React.useState(false);
-    const qrOrdersScrollRef = React.useRef(null);
-    const [isAddTableModalOpen, setIsAddTableModalOpen] = React.useState(false);
-    const [isRenameRoomModalOpen, setIsRenameRoomModalOpen] = React.useState(false);
-    const [selectedTableId, setSelectedTableId] = React.useState(null);
-    const [selectedVariant, setSelectedVariant] = React.useState(null);
-    const [orders, setOrders] = React.useState([]);
-    const [kitchenOrders, setKitchenOrders] = React.useState([]); // New state for KITCHEN orders only
-    const [loadingCompletedOrders, setLoadingCompletedOrders] = React.useState(true);
-    const [errorCompletedOrders, setErrorCompletedOrders] = React.useState(null);
-    const [isOrderRoomOpen, setIsOrderRoomOpen] = React.useState(false);
-    const [selectedRoomTableId, setSelectedRoomTableId] = React.useState(null);
-    const [selectedRoomVariant, setSelectedRoomVariant] = React.useState(null);
-    const [activeView, setActiveView] = React.useState('dashboard'); // 'dashboard' or 'settings'
-    const [dashboardMetrics, setDashboardMetrics] = React.useState({
+    const [error, setError] = useState(null);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [showCompletedOrders, setShowCompletedOrders] = useState(false);
+    const [qrOrders, setQrOrders] = useState([]);
+    const [loadingQrOrders, setLoadingQrOrders] = useState(true);
+    const [errorQrOrders, setErrorQrOrders] = useState(null);
+    const [loadedItemCount, setLoadedItemCount] = useState(50); // Initially load 50 items
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const qrOrdersScrollRef = useRef(null);
+    const [isAddTableModalOpen, setIsAddTableModalOpen] = useState(false);
+    const [isRenameRoomModalOpen, setIsRenameRoomModalOpen] = useState(false);
+    const [selectedTableId, setSelectedTableId] = useState(null);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [orders, setOrders] = useState([]);
+    const [kitchenOrders, setKitchenOrders] = useState([]); // New state for KITCHEN orders only
+    const [loadingCompletedOrders, setLoadingCompletedOrders] = useState(true);
+    const [errorCompletedOrders, setErrorCompletedOrders] = useState(null);
+    const [isOrderRoomOpen, setIsOrderRoomOpen] = useState(false);
+    const [selectedRoomTableId, setSelectedRoomTableId] = useState(null);
+    const [selectedRoomVariant, setSelectedRoomVariant] = useState(null);
+    const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'settings'
+    const [dashboardMetrics, setDashboardMetrics] = useState({
         todayOrders: 0,
         todayRevenue: 0,
         newCustomers: 0,
@@ -54,25 +70,25 @@ function Dashboard() {
     });
 
     // Computed state for tables and channels
-    const [tables, setTables] = React.useState([]);
-    const [channels, setChannels] = React.useState([]);
+    const [tables, setTables] = useState([]);
+    const [channels, setChannels] = useState([]);
 
     // State for date filtering in completed orders
-    const [dateFilter, setDateFilter] = React.useState('7days'); // Options: today, yesterday, 7days, custom
-    const [customDateRange, setCustomDateRange] = React.useState({
+    const [dateFilter, setDateFilter] = useState('7days'); // Options: today, yesterday, 7days, custom
+    const [customDateRange, setCustomDateRange] = useState({
         startDate: null,
         endDate: null
     });
 
     // Add a state to store unsubscribe functions
-    const [kitchenOrdersUnsubscribe, setKitchenOrdersUnsubscribe] = React.useState(null);
-    const [completedOrdersUnsubscribe, setCompletedOrdersUnsubscribe] = React.useState(null);
+    const [kitchenOrdersUnsubscribe, setKitchenOrdersUnsubscribe] = useState(null);
+    const [completedOrdersUnsubscribe, setCompletedOrdersUnsubscribe] = useState(null);
 
     // Add state for the unsubscribe function
-    const [placedOrdersUnsubscribe, setPlacedOrdersUnsubscribe] = React.useState(null);
+    const [placedOrdersUnsubscribe, setPlacedOrdersUnsubscribe] = useState(null);
 
     // Add refreshTables function to window object
-    React.useEffect(() => {
+    useEffect(() => {
         // Function to refresh tables UI
         window.refreshTables = () => {
             // Force re-render of tables from profile
@@ -85,11 +101,6 @@ function Dashboard() {
                     return [...profileTables, ...dynamicTables];
                 });
             }
-
-            // Refresh orders if needed
-            if (window.refreshOrders && typeof window.refreshOrders === 'function') {
-                window.refreshOrders();
-            }
         };
 
         // Expose setupKitchenOrdersListener to window object
@@ -97,13 +108,13 @@ function Dashboard() {
 
         // Clean up
         return () => {
-            delete window.refreshTables;
-            delete window.setupKitchenOrdersListener;
+            window.refreshTables = null;
+            window.setupKitchenOrdersListener = null;
         };
     }, [profileTables]);
 
     // Get the OrderContext data to update tables and channels
-    React.useEffect(() => {
+    useEffect(() => {
         // Depend on locally fetched 'kitchenOrders' state instead of 'orders'
         if (!seller || !kitchenOrders) return;
 
@@ -324,7 +335,7 @@ function Dashboard() {
     }, [seller, kitchenOrders]);
 
     // Fetch orders based on current filter
-    React.useEffect(() => {
+    useEffect(() => {
         if (showCompletedOrders) {
             // Clean up any existing completed orders listener before creating a new one
             if (completedOrdersUnsubscribe) {
@@ -338,7 +349,7 @@ function Dashboard() {
     // Function to show the add table modal
     const showAddTableModal = () => {
         // Check if ModalManager is available
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager) {
             // Use ModalManager directly
             const modalId = 'add-table-modal-' + Date.now();
             const content = `
@@ -388,7 +399,7 @@ function Dashboard() {
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManagerCenterModal({
                 id: modalId,
                 title: "Add Table",
                 content: content,
@@ -437,7 +448,7 @@ function Dashboard() {
                                     tables: updatedTables
                                 });
 
-                                window.ModalManager.showToast('Table added successfully');
+                                ModalManagerast('Table added successfully');
                                 modalControl.close();
                             } catch (err) {
                                 console.error('Error adding table:', err);
@@ -457,7 +468,7 @@ function Dashboard() {
     // Function to show the rename room modal
     const showRenameRoomModal = (tableId, variant) => {
         // Check if ModalManager is available
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager) {
             // Use ModalManager directly
             const modalId = 'rename-room-modal-' + Date.now();
             const initialTitle = tableId || variant || '';
@@ -500,7 +511,7 @@ function Dashboard() {
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManagerCenterModal({
                 id: modalId,
                 title: modalTitle,
                 content: content,
@@ -566,7 +577,7 @@ function Dashboard() {
                                     return;
                                 }
 
-                                window.ModalManager.showToast('Renamed successfully');
+                                ModalManagerast('Renamed successfully');
                                 modalControl.close();
                             } catch (err) {
                                 console.error('Error renaming:', err);
@@ -608,8 +619,8 @@ function Dashboard() {
                         });
 
                         // Trigger UI refresh
-                        if (window.refreshTables && typeof window.refreshTables === 'function') {
-                            window.refreshTables();
+                        if (refreshTables && typeof refreshTables === 'function') {
+                            refreshTables();
                         }
 
                         showToast('Table removed successfully');
@@ -912,15 +923,15 @@ function Dashboard() {
     };
 
     // Check SDK availability when component mounts
-    React.useEffect(() => {
-        if (!window.sdk || !window.sdk.db.collection) {
+    useEffect(() => {
+        if (!sdk || !sdk.db.collection) {
             console.error("SDK is not available or not properly initialized");
             setError("SDK is not available. Some features may not work properly.");
         }
     }, []);
 
     // Fetch QR orders and set up real-time listeners
-    React.useEffect(() => {
+    useEffect(() => {
         // Initial fetch for PLACED orders (QR tab)
         setupPlacedOrdersListener();
 
@@ -946,7 +957,7 @@ function Dashboard() {
     const setupKitchenOrdersListener = () => {
         try {
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 console.error("SDK is not available or not properly initialized");
                 setError("SDK is not available. Please try again later.");
                 return;
@@ -955,7 +966,7 @@ function Dashboard() {
             console.log("[Kitchen Listener] Setting up real-time listener for KITCHEN orders");
 
             // Query for KITCHEN orders - mirrors the Flutter implementation
-            const kitchenQuery = window.sdk.db.collection("Orders")
+            const kitchenQuery = sdk.db.collection("Orders")
                 .where("currentStatus.label", "==", "KITCHEN")
                 .orderBy("date", "desc")
                 .limit(100); // Increased limit for better pagination
@@ -1007,7 +1018,7 @@ function Dashboard() {
     const fetchRecentCompletedOrders = async (kitchenOrdersData) => {
         try {
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 console.error("SDK is not available or not properly initialized");
                 return;
             }
@@ -1018,7 +1029,7 @@ function Dashboard() {
             const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
 
             // Fetch ALL recent orders for metrics (both COMPLETED and other statuses for today/yesterday)
-            const recentCompletedQuery = window.sdk.db.collection("Orders")
+            const recentCompletedQuery = sdk.db.collection("Orders")
                 .orderBy("date", "desc")
                 .where("date", ">=", startOfYesterday) // Get at least yesterday's orders
                 .limit(300); // Increased limit to ensure we get all relevant orders
@@ -1077,7 +1088,7 @@ function Dashboard() {
             setErrorQrOrders(null);
 
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 console.error("SDK is not available or not properly initialized");
                 setErrorQrOrders("SDK is not available. Please try again later.");
                 setLoadingQrOrders(false);
@@ -1087,7 +1098,7 @@ function Dashboard() {
             console.log("[PLACED Listener] Setting up real-time listener for PLACED orders");
 
             // Query for PLACED orders - similar to the KITCHEN orders listener
-            const placedQuery = window.sdk.db.collection("Orders")
+            const placedQuery = sdk.db.collection("Orders")
                 .where("currentStatus.label", "==", "PLACED")
                 .orderBy("date", "desc")
                 .limit(100); // Increased limit for better pagination
@@ -1131,12 +1142,12 @@ function Dashboard() {
             setLoadingQrOrders(true);
 
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 throw new Error('SDK is not available or not properly initialized');
             }
 
             // Fetch the order first to log its current state
-            const orderRef = window.sdk.db.collection("Orders").doc(orderId);
+            const orderRef = sdk.db.collection("Orders").doc(orderId);
             const orderDoc = await orderRef.get();
 
             if (!orderDoc.exists) {
@@ -1161,7 +1172,7 @@ function Dashboard() {
             await orderRef.update({
                 currentStatus: statusEntry,
                 // Use SDK's fieldValue.arrayUnion instead of firebase.firestore
-                status: window.sdk.fieldValue.arrayUnion(statusEntry)
+                status: sdk.fieldValue.arrayUnion(statusEntry)
             });
 
             // Fetch the updated order to confirm changes
@@ -1198,7 +1209,7 @@ function Dashboard() {
             setLoadingQrOrders(true);
 
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 throw new Error('SDK is not available or not properly initialized');
             }
 
@@ -1209,13 +1220,13 @@ function Dashboard() {
             };
 
             // Update the order status directly without checking if it exists
-            const orderRef = window.sdk.db.collection("Orders").doc(orderId);
+            const orderRef = sdk.db.collection("Orders").doc(orderId);
 
             // Update with array union for atomicity
             await orderRef.update({
                 currentStatus: statusEntry,
                 // Use a server-side array union to append the status without needing to read first
-                status: window.sdk.fieldValue.arrayUnion(statusEntry)
+                status: sdk.fieldValue.arrayUnion(statusEntry)
             });
 
             // Show success message
@@ -1231,24 +1242,24 @@ function Dashboard() {
     const handlePrintBill = async (orderId) => {
         try {
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 throw new Error('SDK is not available or not properly initialized');
             }
 
             console.log(`[Dashboard] Attempting to print bill for order: ${orderId}`);
 
             // Check if bill printing is available in SDK and print directly without checking if order exists
-            if (window.sdk.bill && typeof window.sdk.bill.print === 'function') {
+            if (sdk.bill && typeof sdk.bill.print === 'function') {
                 console.log(`[Dashboard] Using SDK bill.print function`);
-                await window.sdk.bill.print(orderId);
+                await sdk.bill.print(orderId);
                 showToast("Bill printed successfully");
-            } else if (window.BluetoothPrinting && window.PrintTemplate) {
+            } else if (BluetoothPrinting && PrintTemplate) {
                 // Use our own implementation with PrintTemplate and BluetoothPrinting
                 console.log(`[Dashboard] Using BluetoothPrinting with PrintTemplate`);
 
                 try {
                     // Fetch the order data
-                    const orderDoc = await window.sdk.db.collection("Orders").doc(orderId).get();
+                    const orderDoc = await sdk.db.collection("Orders").doc(orderId).get();
                     const orderData = orderDoc.data();
 
                     if (!orderData) {
@@ -1256,7 +1267,7 @@ function Dashboard() {
                     }
 
                     // Print the bill using BluetoothPrinting
-                    const success = await window.BluetoothPrinting.printBill(orderId);
+                    const success = await BluetoothPrinting.printBill(orderId);
 
                     if (success) {
                         showToast("Bill printed successfully");
@@ -1267,10 +1278,10 @@ function Dashboard() {
                     console.error('Error in BluetoothPrinting:', printError);
                     throw printError;
                 }
-            } else if (window.sdk.kot && typeof window.sdk.kot.print === 'function') {
+            } else if (sdk.kot && typeof sdk.kot.print === 'function') {
                 // Fallback to KOT printing if bill printing is not available
                 console.log(`[Dashboard] Bill print not available, falling back to KOT print`);
-                await window.sdk.kot.print(orderId);
+                await sdk.kot.print(orderId);
                 showToast("KOT printed successfully");
             } else {
                 // Fallback for development/testing
@@ -1283,7 +1294,7 @@ function Dashboard() {
         }
     };
 
-    const filteredTables = React.useMemo(() => {
+    const filteredTables = useMemo(() => {
         return tables.filter(table => {
             if (table.type === 'dine_in') return true;
             if (table.type === 'qr' && table.orders.length > 0) return true;
@@ -1293,7 +1304,7 @@ function Dashboard() {
     }, [tables]);
 
     // Group dining tables by section
-    const groupedDiningTables = React.useMemo(() => {
+    const groupedDiningTables = useMemo(() => {
         return filteredTables.reduce((acc, table) => {
             if (table.type !== 'dine_in') return acc;
             if (!acc[table.section]) {
@@ -1311,12 +1322,12 @@ function Dashboard() {
 
     // Format a currency value
     const formatCurrency = (amount) => {
-        if (window.CurrencyData) {
-            const currencyCode = window.UserSession?.getCurrencyCode() || "INR";
-            return window.CurrencyData.formatAmount(amount, currencyCode);
+        if (CurrencyData) {
+            const currencyCode = UserSession?.getCurrencyCode() || "INR";
+            return CurrencyData.formatAmount(amount, currencyCode);
         }
         // Fallback to default formatting if CurrencyData is not available
-        const currencySymbol = window.UserSession?.getCurrency() || '₹';
+        const currencySymbol = UserSession?.getCurrency() || '₹';
         return `${currencySymbol} ${amount.toLocaleString('en-IN', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
@@ -1330,7 +1341,7 @@ function Dashboard() {
             setErrorCompletedOrders(null);
 
             // Check if SDK is available
-            if (!window.sdk || !window.sdk.db.collection) {
+            if (!sdk || !sdk.db.collection) {
                 console.error("SDK is not available or not properly initialized");
                 setErrorCompletedOrders("SDK is not available. Please try again later.");
                 setLoadingCompletedOrders(false);
@@ -1344,7 +1355,7 @@ function Dashboard() {
             const endDate = calculateEndDate(dateFilter, customDateRange.endDate);
 
             // Query specifically for COMPLETED orders only
-            let ordersQuery = window.sdk.db.collection("Orders")
+            let ordersQuery = sdk.db.collection("Orders")
                 .where("currentStatus.label", "==", "COMPLETED")
                 .orderBy("date", "desc")
                 .limit(100);
@@ -1426,13 +1437,13 @@ function Dashboard() {
 
     // Handle access role management
     const handlePrintTemplateManagement = () => {
-        if (!window.ModalManager || !window.sdk) {
+        if (!ModalManagerndow.sdk) {
             showToast("System components not loaded. Please try again later.");
             return;
         }
 
         // Ensure PrintTemplate is available
-        if (!window.PrintTemplate) {
+        if (!PrintTemplate) {
             console.error("PrintTemplate class is not available. Loading from PrintTemplate.js");
             showToast("Loading print template system...");
 
@@ -1453,7 +1464,7 @@ function Dashboard() {
         }
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'print-template-modal',
             title: "Receipt Template",
             content: `
@@ -1532,7 +1543,7 @@ function Dashboard() {
                 } else {
                     console.log("No saved templates found, using defaults from PrintTemplate.js");
                     // Use PrintTemplate.js to create default templates
-                    if (window.PrintTemplate) {
+                    if (PrintTemplate) {
                         try {
                             // Ensure seller data has necessary fields
                             const sellerData = {
@@ -1545,14 +1556,14 @@ function Dashboard() {
                             };
 
                             // Create default bill template
-                            const defaultBill = new window.PrintTemplate({
+                            const defaultBill = new PrintTemplate({
                                 type: 'bill',
                                 orderData: {}, // Empty order for default template
                                 seller: sellerData
                             });
 
                             // Create default KOT template
-                            const defaultKOT = new window.PrintTemplate({
+                            const defaultKOT = new PrintTemplate({
                                 type: 'kot',
                                 orderData: {}, // Empty order for default template
                                 seller: sellerData
@@ -1626,7 +1637,7 @@ function Dashboard() {
 
                     if (currentTemplate && currentTemplate.sections && currentTemplate.sections.length > 0) {
                         // Use the PrintTemplate class directly to generate HTML based on the current template
-                        if (window.PrintTemplate) {
+                        if (PrintTemplate) {
                             try {
                                 console.log("Using PrintTemplate for preview with seller data:", seller);
 
@@ -1641,7 +1652,7 @@ function Dashboard() {
                                 };
 
                                 // Create a PrintTemplate instance and generate HTML
-                                const template = new window.PrintTemplate({
+                                const template = new PrintTemplate({
                                     orderData: testOrder,
                                     seller: sellerData,
                                     type: templateType,
@@ -1660,7 +1671,7 @@ function Dashboard() {
                                 </div>`;
                             }
                         } else {
-                            console.warn("window.PrintTemplate is not available");
+                            console.warn("PrintTemplate is not available");
                             return `<div class="text-center text-amber-500 p-4">
                                 <i class="ph ph-warning-circle text-3xl mb-2"></i>
                                 <p>PrintTemplate class is not available. Please refresh the page and try again.</p>
@@ -1699,21 +1710,21 @@ function Dashboard() {
                                     <tr>
                                         <td class="py-1 px-2">2</td>
                                         <td class="py-1">Butter Chicken</td>
-                                        <td class="py-1 text-right">${window.UserSession?.getCurrency()}599</td>
+                                        <td class="py-1 text-right">${UserSession?.getCurrency()}599</td>
                                     </tr>
                                     <tr>
                                         <td class="py-1 px-2">1</td>
                                         <td class="py-1">Jeera Rice</td>
-                                        <td class="py-1 text-right">${window.UserSession?.getCurrency()}149</td>
+                                        <td class="py-1 text-right">${UserSession?.getCurrency()}149</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                         <div class="mt-4 text-right">
-                            <p>Sub Total: ${window.UserSession?.getCurrency()}748</p>
-                            <p>Discount: -${window.UserSession?.getCurrency()}50</p>
-                            <p>GST: ${window.UserSession?.getCurrency()}35</p>
-                            <p class="font-bold mt-2">TOTAL: ${window.UserSession?.getCurrency()}733</p>
+                            <p>Sub Total: ${UserSession?.getCurrency()}748</p>
+                            <p>Discount: -${UserSession?.getCurrency()}50</p>
+                            <p>GST: ${UserSession?.getCurrency()}35</p>
+                            <p class="font-bold mt-2">TOTAL: ${UserSession?.getCurrency()}733</p>
                         </div>
                         <div class="mt-4 text-right">
                             <p>Payment mode: Cash</p>
@@ -2024,10 +2035,10 @@ function Dashboard() {
                 async function saveTemplate() {
                     try {
                         console.log("Saving templates to profile:", templates);
-                        await window.sdk.profile.update({
+                        await sdk.profile.update({
                             printTemplate: templates
                         });
-                        window.ModalManager.showToast('Print template saved successfully');
+                        ModalManagerast('Print template saved successfully');
                         modalControl.close();
                     } catch (error) {
                         console.error('Error saving print template:', error);
@@ -2092,13 +2103,13 @@ function Dashboard() {
 
     // Handle bulk tax update
     const handleBulkTaxUpdate = () => {
-        if (!window.ModalManager || !window.sdk) {
+        if (!ModalManagerndow.sdk) {
             showToast("System components not loaded. Please try again later.");
             return;
         }
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'bulk-tax-update-modal',
             title: "Bulk Tax Update",
             content: `
@@ -2207,7 +2218,7 @@ function Dashboard() {
                                     class="tax-type-input w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
                                         >
                                     <option value="percentage" ${taxItem.type === 'percentage' ? 'selected' : ''}>Percentage (%)</option>
-                                    <option value="fixed" ${taxItem.type === 'fixed' ? 'selected' : ''}>Fixed Amount (${window.UserSession?.getCurrency()})</option>
+                                    <option value="fixed" ${taxItem.type === 'fixed' ? 'selected' : ''}>Fixed Amount (${UserSession?.getCurrency()})</option>
                                         </select>
                                     </div>
                                 </div>
@@ -2352,13 +2363,13 @@ function Dashboard() {
                         const updateHashtag = `#BulkTaxUpdate_${Math.floor(Date.now() / 1000)}`;
 
                         // Get all products for this seller
-                        const productsSnapshot = await window.sdk.db.collection("Product").get();
+                        const productsSnapshot = await sdk.db.collection("Product").get();
 
                         let successCount = 0;
                         const totalProducts = productsSnapshot.size;
 
                         // Update each product with the new tax configuration
-                        const batch = window.sdk.db.firestore.batch();
+                        const batch = sdk.db.firestore.batch();
 
                         productsSnapshot.forEach(doc => {
                             const productData = doc.data();
@@ -2383,7 +2394,7 @@ function Dashboard() {
 
                         // Store the bulk tax update info in seller profile for reference
                         if (seller && seller.id) {
-                            const sellerRef = window.sdk.profile;
+                            const sellerRef = sdk.profile;
                             batch.update(sellerRef, {
                                 lastBulkTaxUpdate: {
                                     timestamp: updateTimestamp,
@@ -2396,7 +2407,7 @@ function Dashboard() {
                         // Commit all updates
                         await batch.commit();
 
-                        window.ModalManager.showToast(`Successfully updated tax for ${successCount} products`);
+                        ModalManagerast(`Successfully updated tax for ${successCount} products`);
                         modalControl.close();
                     } catch (error) {
                         console.error('Error updating product taxes:', error);
@@ -2414,13 +2425,13 @@ function Dashboard() {
 
     // Handle product import
     const handleProductImport = () => {
-        if (!window.ModalManager || !window.sdk) {
+        if (!ModalManagerndow.sdk) {
             showToast("System components not loaded. Please try again later.");
             return;
         }
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'import-products-modal',
             title: "Bulk Import Products",
             content: `
@@ -2479,7 +2490,7 @@ function Dashboard() {
                 // Handle import start
                 startImportBtn.addEventListener('click', async () => {
                     if (!selectedFile) {
-                        window.ModalManager.showToast('Please select a file to import');
+                        ModalManagerast('Please select a file to import');
                         return;
                     }
 
@@ -2504,16 +2515,16 @@ function Dashboard() {
                                 const storagePath = `seller/${seller.id}/import_product_${Date.now()}.xlsx`;
 
                                 // Get a reference to the storage location
-                                const storageRef = window.sdk.storage.ref(storagePath);
+                                const storageRef = sdk.storage.ref(storagePath);
 
                                 // Upload the file
                                 await storageRef.put(new Uint8Array(fileData));
 
-                                window.ModalManager.showToast('File uploaded successfully. Products will be imported in the background.');
+                                ModalManagerast('File uploaded successfully. Products will be imported in the background.');
                                 modalControl.close();
                             } catch (error) {
                                 console.error('Error uploading file:', error);
-                                window.ModalManager.showToast('Failed to upload file. Please try again.');
+                                ModalManagerast('Failed to upload file. Please try again.');
 
                                 // Reset button
                                 startImportBtn.disabled = false;
@@ -2524,7 +2535,7 @@ function Dashboard() {
                         fileReader.readAsArrayBuffer(selectedFile);
                     } catch (error) {
                         console.error('Error starting import:', error);
-                        window.ModalManager.showToast('Failed to start import. Please try again.');
+                        ModalManagerast('Failed to start import. Please try again.');
 
                         // Reset button
                         startImportBtn.disabled = false;
@@ -2537,7 +2548,7 @@ function Dashboard() {
 
     // Handle printer management
     const handlePrinterManagement = () => {
-        if (!window.ModalManager || !window.sdk) {
+        if (!ModalManagerndow.sdk) {
             showToast("System components not loaded. Please try again later.");
             return;
         }
@@ -2558,7 +2569,7 @@ function Dashboard() {
         }
 
         // Get managed printers from BluetoothPrinting
-        const bluetoothPrinting = window.BluetoothPrinting;
+        const bluetoothPrinting = BluetoothPrinting;
         const managedPrinters = bluetoothPrinting ? bluetoothPrinting.getSavedPrinters() : [];
 
         // Get currently connected printer info
@@ -2568,7 +2579,7 @@ function Dashboard() {
         const connectedDeviceName = connectedDevice ? connectedDevice.name : null;
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'printer-management-modal',
             title: "Printer Management",
             content: `
@@ -2800,7 +2811,7 @@ function Dashboard() {
         }
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'add-printer-modal',
             title: "Add Printer",
             content: `
@@ -3052,11 +3063,11 @@ function Dashboard() {
                     try {
                         errorContainer.classList.add('hidden');
 
-                        if (!window.BluetoothPrinting) {
+                        if (!BluetoothPrinting) {
                             throw new Error('Bluetooth printing service not available');
                         }
 
-                        const bluetoothPrinting = window.BluetoothPrinting;
+                        const bluetoothPrinting = BluetoothPrinting;
 
                         // Check if the browser supports Web Bluetooth
                         if (!bluetoothPrinting.isSupported()) {
@@ -3166,12 +3177,12 @@ function Dashboard() {
                         }
 
                         // Add the printer to the managed printers list
-                        if (window.BluetoothPrinting) {
-                            const bluetoothPrinting = window.BluetoothPrinting;
+                        if (BluetoothPrinting) {
+                            const bluetoothPrinting = BluetoothPrinting;
                             bluetoothPrinting.addPrinter(printer, isDefaultPrinterInput.checked);
 
                             // Show success message
-                            window.ModalManager.showToast('Printer added successfully');
+                            ModalManagerast('Printer added successfully');
 
                             // Close the modal
                             modalControl.close();
@@ -3195,9 +3206,9 @@ function Dashboard() {
     // Show edit printer modal
     const showEditPrinterModal = (printerId, parentModalControl) => {
         // Get the printer from BluetoothPrinting
-        const bluetoothPrinting = window.BluetoothPrinting;
+        const bluetoothPrinting = BluetoothPrinting;
         if (!bluetoothPrinting) {
-            window.ModalManager.showToast('Bluetooth printing service not available', 'error');
+            ModalManagerast('Bluetooth printing service not available', 'error');
             return;
         }
 
@@ -3205,7 +3216,7 @@ function Dashboard() {
         const printer = printers.find(p => p.id === printerId);
 
         if (!printer) {
-            window.ModalManager.showToast('Printer not found', 'error');
+            ModalManagerast('Printer not found', 'error');
             return;
         }
 
@@ -3225,7 +3236,7 @@ function Dashboard() {
         const printerType = printer.type || (printer.deviceId ? 'bluetooth' : 'wired');
 
         // Create modal
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManagerCenterModal({
             id: 'edit-printer-modal',
             title: "Edit Printer",
             content: `
@@ -3530,7 +3541,7 @@ function Dashboard() {
                         bluetoothPrinting.updatePrinter(printerId, updates);
 
                         // Show success message
-                        window.ModalManager.showToast('Printer updated successfully');
+                        ModalManagerast('Printer updated successfully');
 
                         // Close the modal
                         modalControl.close();
@@ -3551,9 +3562,9 @@ function Dashboard() {
     // Remove a printer
     const removePrinter = (printerId, parentModalControl) => {
         // Get the printer service
-        const bluetoothPrinting = window.BluetoothPrinting;
+        const bluetoothPrinting = BluetoothPrinting;
         if (!bluetoothPrinting) {
-            window.ModalManager.showToast('Bluetooth printing service not available', 'error');
+            ModalManagerast('Bluetooth printing service not available', 'error');
             return;
         }
 
@@ -3562,12 +3573,12 @@ function Dashboard() {
         const printer = printers.find(p => p.id === printerId);
 
         if (!printer) {
-            window.ModalManager.showToast('Printer not found', 'error');
+            ModalManagerast('Printer not found', 'error');
             return;
         }
 
         // Confirm deletion with a modal
-        const confirmModal = window.ModalManager.createCenterModal({
+        const confirmModal = ModalManagerCenterModal({
             id: 'confirm-delete-printer-modal',
             title: "Remove Printer",
             content: `
@@ -3628,7 +3639,7 @@ function Dashboard() {
                         const result = bluetoothPrinting.removePrinter(printerId);
 
                         if (result) {
-                            window.ModalManager.showToast('Printer removed successfully');
+                            ModalManagerast('Printer removed successfully');
 
                             // Close modals
                             modalControl.close();
@@ -3637,11 +3648,11 @@ function Dashboard() {
                             parentModalControl.close();
                             handlePrinterManagement();
                         } else {
-                            window.ModalManager.showToast('Failed to remove printer', 'error');
+                            ModalManagerast('Failed to remove printer', 'error');
                         }
                     } catch (error) {
                         console.error('Error removing printer:', error);
-                        window.ModalManager.showToast(`Error: ${error.message}`, 'error');
+                        ModalManagerast(`Error: ${error.message}`, 'error');
                     }
                 });
             }
@@ -3988,7 +3999,7 @@ function Dashboard() {
                                             <div className="text-lg font-bold text-gray-800">
                                                 {(() => {
                                                     // Calculate average order value for QR orders
-                                                    if (qrOrders.length === 0) return "${window.UserSession?.getCurrency()}0";
+                                                    if (qrOrders.length === 0) return "${UserSession?.getCurrency()}0";
 
                                                     const totalValue = qrOrders.reduce((sum, order) => {
                                                         const itemsTotal = order.items?.reduce((total, item) => {
@@ -3999,7 +4010,7 @@ function Dashboard() {
                                                     }, 0);
 
                                                     const avgValue = Math.round(totalValue / qrOrders.length);
-                                                    return `${window.UserSession?.getCurrency()}${avgValue}`;
+                                                    return `${UserSession?.getCurrency()}${avgValue}`;
                                                 })()}
                                             </div>
                                         </div>
@@ -4153,7 +4164,7 @@ function Dashboard() {
                                         </div>
                                         <button
                                             onClick={() => {
-                                                window.ModalManager?.createCenterModal({
+                                                ModalManagereCenterModal({
                                                     id: 'edit-profile-modal',
                                                     title: "Edit Store Profile",
                                                     content: `
@@ -4223,7 +4234,7 @@ function Dashboard() {
                                                                     id="currency-input"
                                                                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                                                                 >
-                                                                    ${window.CurrencyData?.currencies.map(currency =>
+                                                                    ${CurrencyData?.currencies.map(currency =>
                                                         `<option value="${currency.code}" ${(seller.currencyCode || 'INR') === currency.code ? 'selected' : ''}>
                                                                             ${currency.name} (${currency.symbol})
                                                                         </option>`
@@ -4300,14 +4311,14 @@ function Dashboard() {
                                                                 };
 
                                                                 // Update Firestore
-                                                                await window.sdk.profile.update(updateData);
+                                                                await sdk.profile.update(updateData);
 
                                                                 // Update UserSession with new currency code
-                                                                if (window.UserSession) {
-                                                                    window.UserSession.setCurrencyCode(updateData.currencyCode);
+                                                                if (UserSession) {
+                                                                    UserSession.setCurrencyCode(updateData.currencyCode);
                                                                 }
 
-                                                                window.ModalManager.showToast('Store profile updated successfully');
+                                                                ModalManagerast('Store profile updated successfully');
                                                                 modalControl.close();
 
                                                                 // Refresh the page to reflect changes
@@ -4399,7 +4410,7 @@ function Dashboard() {
                                             className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 px-4 rounded-lg transition-colors"
                                             onClick={() => {
                                                 // Open Store Hours management
-                                                window.ModalManager?.createCenterModal({
+                                                ModalManagereCenterModal({
                                                     id: 'store-hours-modal',
                                                     title: "Store Hours",
                                                     content: `<div class="p-4">
@@ -4458,7 +4469,7 @@ function Dashboard() {
                                             className="flex flex-col sm:flex-row sm:items-center justify-between py-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 px-4 rounded-lg transition-colors"
                                             onClick={() => {
                                                 // Open Payment Methods management
-                                                window.ModalManager?.createCenterModal({
+                                                ModalManagereCenterModal({
                                                     id: 'payment-methods-modal',
                                                     title: "Payment Methods",
                                                     content: `<div class="p-4">

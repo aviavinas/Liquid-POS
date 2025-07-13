@@ -1,5 +1,9 @@
+import { useState, useEffect } from 'react';
+import { sdk } from '../sdk.js';
+import { CurrencyData } from '../utils/CurrencyData.js';
+
 // ProfilePage Component
-function ProfilePage({ inModal = false, onClose }) {
+export default function ProfilePage({ inModal = false, onClose }) {
     const {
         profile,
         loading,
@@ -16,10 +20,10 @@ function ProfilePage({ inModal = false, onClose }) {
         kotEnabled,
         getStoreLink,
         downloadQr
-    } = window.useProfile ? window.useProfile() : { profile: null, loading: true, error: null };
+    } = useProfile ? useProfile() : { profile: null, loading: true, error: null };
 
-    const [isEditing, setIsEditing] = React.useState(inModal);
-    const [formData, setFormData] = React.useState({
+    const [isEditing, setIsEditing] = useState(inModal);
+    const [formData, setFormData] = useState({
         businessName: '',
         phone: '',
         address: '',
@@ -30,7 +34,7 @@ function ProfilePage({ inModal = false, onClose }) {
     });
 
     // Initialize form data when profile is loaded
-    React.useEffect(() => {
+    useEffect(() => {
         if (profile) {
             setFormData({
                 businessName: profile.businessName || '',
@@ -59,8 +63,8 @@ function ProfilePage({ inModal = false, onClose }) {
             await sdk.profile.update(formData);
 
             // Update UserSession with new currency code
-            if (window.UserSession) {
-                window.UserSession.setCurrencyCode(formData.currencyCode);
+            if (UserSession) {
+                UserSession.setCurrencyCode(formData.currencyCode);
             }
 
             showToast('Profile updated successfully', 'success');
@@ -216,9 +220,9 @@ function ProfilePage({ inModal = false, onClose }) {
                                         onChange={handleInputChange}
                                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
-                                        {window.CurrencyData?.currencies.map(currency => (
+                                        {CurrencyData?.currencies.map(currency => (
                                             <option key={currency.code} value={currency.code}>
-                                                {currency.name} ({currency.symbol})
+                                                {`${currency.name} (${currency.symbol})`}
                                             </option>
                                         )) || (
                                                 <option value="INR">Indian Rupee (₹)</option>
@@ -280,7 +284,7 @@ function ProfilePage({ inModal = false, onClose }) {
                                 />
                                 <InfoItem
                                     label="Currency"
-                                    value={profile?.currencyCode ? `${window.CurrencyData?.getCurrencyByCode(profile.currencyCode)?.name || 'Indian Rupee'} (${window.CurrencyData?.getCurrencyByCode(profile.currencyCode)?.symbol || '₹'})` : 'Indian Rupee (₹)'}
+                                    value={profile?.currencyCode ? `${CurrencyData?.getCurrencyByCode(profile.currencyCode)?.name || 'Indian Rupee'} (${CurrencyData?.getCurrencyByCode(profile.currencyCode)?.symbol || '₹'})` : 'Indian Rupee (₹)'}
                                     icon="currency-dollar"
                                 />
                                 <InfoItem

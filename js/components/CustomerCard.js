@@ -1,11 +1,13 @@
+import React from 'react';
+
 // Customer Card Component
-function CustomerCard({ customer }) {
+export default function CustomerCard({ customer }) {
     // Setup state for real-time updates
-    const [customerData, setCustomerData] = React.useState(customer);
-    const [listener, setListener] = React.useState(null);
+    const [customerData, setCustomerData] = useState(customer);
+    const [listener, setListener] = useState(null);
 
     // Set up real-time listener when component mounts
-    React.useEffect(() => {
+    useEffect(() => {
         if (customer?.id) {
             const unsubscribe = sdk.db.collection("Customers").doc(customer.id)
                 .onSnapshot(doc => {
@@ -82,7 +84,7 @@ function CustomerCard({ customer }) {
 
         let message = "Hello";
         if (balance < 0) {
-            const currencySymbol = window.UserSession?.getCurrency();
+            const currencySymbol = UserSession?.getCurrency();
             message = `Hello ${name}, this is a reminder about your pending balance of ${currencySymbol}${Math.abs(balance)}`;
         }
 
@@ -106,8 +108,8 @@ function CustomerCard({ customer }) {
     function waitForModalManager() {
         return new Promise((resolve, reject) => {
             // If ModalManager is already available, resolve immediately
-            if (window.ModalManager && window.ModalManager.isReady) {
-                resolve(window.ModalManager);
+            if (ModalManager && ModalManager.isReady) {
+                resolve(ModalManager);
                 return;
             }
 
@@ -129,17 +131,17 @@ function CustomerCard({ customer }) {
             // Listen for the ready event
             const onReady = () => {
                 clearTimeout(timeout);
-                resolve(window.ModalManager);
+                resolve(ModalManager);
             };
 
             document.addEventListener('modalmanager:ready', onReady);
 
             // Also check periodically in case we missed the event
             const checkInterval = setInterval(() => {
-                if (window.ModalManager && window.ModalManager.isReady) {
+                if (ModalManager && ModalManager.isReady) {
                     clearTimeout(timeout);
                     clearInterval(checkInterval);
-                    resolve(window.ModalManager);
+                    resolve(ModalManager);
                 }
             }, 100);
         });
@@ -149,7 +151,7 @@ function CustomerCard({ customer }) {
     function showCustomerDetails(customer) {
         try {
             // Show loading state
-            const modal = window.ModalManager.createSideDrawerModal({
+            const modal = ModalManager.createSideDrawerModal({
                 id: 'customer-details-modal',
                 title: `${customer.name}`,
                 content: `<div class="flex items-center justify-center p-8">
@@ -162,16 +164,16 @@ function CustomerCard({ customer }) {
             });
 
             // Load CustomerDetails component if not already loaded
-            if (typeof window.CustomerDetails === 'undefined') {
+            if (typeof CustomerDetails === 'undefined') {
                 const script = document.createElement('script');
                 script.src = 'js/components/CustomerDetails.js';
                 script.onload = () => {
                     try {
-                        if (typeof window.CustomerDetails !== 'undefined') {
+                        if (typeof CustomerDetails !== 'undefined') {
                             // Wait briefly to ensure complete initialization
                             setTimeout(() => {
-                                if (typeof window.CustomerDetails.showCustomerDetailsModal === 'function') {
-                                    window.CustomerDetails.showCustomerDetailsModal(customer, modal);
+                                if (typeof CustomerDetails.showCustomerDetailsModal === 'function') {
+                                    CustomerDetails.showCustomerDetailsModal(customer, modal);
                                 } else {
                                     console.error("CustomerDetails loaded but showCustomerDetailsModal method not found");
                                     modal.setContent(`<div class="p-4 text-center">
@@ -201,7 +203,7 @@ function CustomerCard({ customer }) {
                 document.head.appendChild(script);
             } else {
                 try {
-                    window.CustomerDetails.showCustomerDetailsModal(customer, modal);
+                    CustomerDetails.showCustomerDetailsModal(customer, modal);
                 } catch (error) {
                     console.error("Error showing customer details:", error);
                     modal.setContent(`<div class="p-4 text-center">
@@ -228,12 +230,12 @@ function CustomerCard({ customer }) {
     const loadCustomerDetailsComponent = (callback) => {
         // Check if the script already exists
         if (document.querySelector('script[src="js/components/CustomerDetails.js"]')) {
-            if (window.CustomerDetails) {
+            if (CustomerDetails) {
                 callback();
             } else {
                 // Wait for script to load
                 setTimeout(() => {
-                    if (window.CustomerDetails) {
+                    if (CustomerDetails) {
                         callback();
                     } else {
                         console.error("CustomerDetails component failed to load");
@@ -253,7 +255,7 @@ function CustomerCard({ customer }) {
             document.body.appendChild(detailsDiv);
 
             window.ReactDOM.render(
-                React.createElement(window.CustomerDetails, {}),
+                createElement(CustomerDetails, {}),
                 detailsDiv
             );
 
@@ -284,14 +286,14 @@ function CustomerCard({ customer }) {
                     <div className="text-right mr-6">
                         <div className="text-sm font-medium text-gray-500">Balance</div>
                         <div className={`font-semibold ${balance < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {window.UserSession?.getCurrency()}{balance < 0 ? `-${Math.abs(balance).toLocaleString()}` : balance.toLocaleString()}
+                            {UserSession?.getCurrency()}{balance < 0 ? `-${Math.abs(balance).toLocaleString()}` : balance.toLocaleString()}
                         </div>
                     </div>
 
                     {/* Spent Amount */}
                     <div className="text-right">
                         <div className="text-sm font-medium text-gray-500">Total Spent</div>
-                        <div className="font-medium text-gray-700">{window.UserSession?.getCurrency()}{totalSpent.toLocaleString()}</div>
+                        <div className="font-medium text-gray-700">{UserSession?.getCurrency()}{totalSpent.toLocaleString()}</div>
                     </div>
                 </div>
             </div>
@@ -317,6 +319,3 @@ function CustomerCard({ customer }) {
         </div>
     );
 }
-
-// Make component available globally
-window.CustomerCard = CustomerCard;

@@ -1,8 +1,8 @@
 // Checkout Component for Shopto
 function CheckoutSheet({ order, onClose }) {
-    const [paymentMode, setPaymentMode] = React.useState('Cash');
-    const [showContent, setShowContent] = React.useState(true);
-    const [customer, setCustomer] = React.useState(null);
+    const [paymentMode, setPaymentMode] = te('Cash');
+    const [showContent, setShowContent] = useState(true);
+    const [customer, setCustomer] = useState(null);
 
     // Handle checkout process
     const handleCheckout = async (mode) => {
@@ -75,7 +75,7 @@ function CheckoutSheet({ order, onClose }) {
                             <p className="text-sm text-gray-500">Qty: {item.qnt}</p>
                         </div>
                         <div className="text-right">
-                            <span className="font-medium">{window.UserSession?.getCurrency()}{item.price}</span>
+                            <span className="font-medium">{UserSession?.getCurrency()}{item.price}</span>
                         </div>
                     </div>
                 ))}
@@ -100,9 +100,9 @@ function CheckoutSheet({ order, onClose }) {
                     }}
                 />
                 <div className="text-right">
-                    <p className="text-gray-700">Sub Total: {window.UserSession?.getCurrency()}{order.subTotal}</p>
-                    <p className="text-green-600 mt-1">Discount: - {window.UserSession?.getCurrency()}{order.discount}</p>
-                    <p className="text-xl font-bold mt-4">Pay Total: {window.UserSession?.getCurrency()}{order.total}</p>
+                    <p className="text-gray-700">Sub Total: {UserSession?.getCurrency()}{order.subTotal}</p>
+                    <p className="text-green-600 mt-1">Discount: - {UserSession?.getCurrency()}{order.discount}</p>
+                    <p className="text-xl font-bold mt-4">Pay Total: {UserSession?.getCurrency()}{order.total}</p>
                 </div>
             </div>
         </div>
@@ -184,9 +184,9 @@ function CheckoutSheet({ order, onClose }) {
 
 // Discount Button Component
 function DiscountButton({ initialDiscount = 0, maxDiscount, onDiscountChange }) {
-    const [isOpen, setIsOpen] = React.useState(false);
-    const [discount, setDiscount] = React.useState(initialDiscount);
-    const inputRef = React.useRef(null);
+    const [isOpen, setIsOpen] = useState(false);
+    const [discount, setDiscount] = useState(initialDiscount);
+    const inputRef = useRef(null);
 
     const handleDiscountChange = (value) => {
         const newDiscount = Math.min(Number(value) || 0, maxDiscount);
@@ -240,21 +240,21 @@ function DiscountButton({ initialDiscount = 0, maxDiscount, onDiscountChange }) 
 
 // Add Customer Component
 function AddCustomer({ onSelectCustomer, onContentVisibilityChange }) {
-    const [customers, setCustomers] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [formData, setFormData] = React.useState({ name: '', phone: '' });
-    const formRef = React.useRef(null);
-    const nameInputRef = React.useRef(null);
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [formData, setFormData] = useState({ name: '', phone: '' });
+    const formRef = useRef(null);
+    const nameInputRef = useRef(null);
 
     // Fetch customers on mount
-    React.useEffect(() => {
+    useEffect(() => {
         fetchCustomers();
     }, []);
 
     const fetchCustomers = async () => {
         try {
-            const snapshot = await window.sdk.db.collection("Customers").get();
+            const snapshot = await sdk.db.collection("Customers").get();
             const customersList = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -293,7 +293,7 @@ function AddCustomer({ onSelectCustomer, onContentVisibilityChange }) {
                 orderCount: 0
             };
 
-            const docRef = await window.sdk.db.collection("Customers").add(customerData);
+            const docRef = await sdk.db.collection("Customers").add(customerData);
             const newCustomer = { id: docRef.id, ...customerData };
 
             onSelectCustomer(newCustomer);
@@ -391,6 +391,3 @@ function AddCustomer({ onSelectCustomer, onContentVisibilityChange }) {
         </div>
     );
 }
-
-// Export the component
-window.CheckoutSheet = CheckoutSheet; 

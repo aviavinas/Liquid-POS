@@ -1,5 +1,5 @@
 // CustomerDetails Component
-function CustomerDetails() {
+export default function CustomerDetails() {
     // Instance properties
     this.customerListener = null;
     this.walletListener = null;
@@ -72,7 +72,7 @@ function CustomerDetails() {
                         <div>
                             <p class="text-sm text-gray-600">Current Balance</p>
                             <p class="text-xl font-bold ${Number(customerData.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}">
-                                ${window.UserSession?.getCurrency()}${Number(customerData.balance || 0) < 0
+                                ${UserSession?.getCurrency()}${Number(customerData.balance || 0) < 0
                 ? `-${Math.abs(Number(customerData.balance || 0)).toLocaleString()}`
                 : (Number(customerData.balance || 0)).toLocaleString()}
                             </p>
@@ -121,7 +121,7 @@ function CustomerDetails() {
             modal.setTitle(customerData.name || 'Customer Details');
         } else {
             // Create a new modal
-            modal = window.ModalManager.createSideDrawerModal({
+            modal = ModalManager.createSideDrawerModal({
                 id: 'customer-details-modal',
                 title: customerData.name || 'Customer Details',
                 content: modalContent,
@@ -282,10 +282,10 @@ function CustomerDetails() {
                                 </div>
                                 <div class="text-right">
                                     <p class="font-medium ${transaction.type === 'CREDIT' ? 'text-red-500' : 'text-green-500'}">
-                                        ${transaction.type === 'CREDIT' ? '-' : '+'}${window.UserSession?.getCurrency()}${transaction.amount.toLocaleString()}
+                                        ${transaction.type === 'CREDIT' ? '-' : '+'}${UserSession?.getCurrency()}${transaction.amount.toLocaleString()}
                                     </p>
                                     <p class="text-sm text-gray-500">
-                                        Balance: ${window.UserSession?.getCurrency()}${transaction.balance.toLocaleString()}
+                                        Balance: ${UserSession?.getCurrency()}${transaction.balance.toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -369,7 +369,7 @@ function CustomerDetails() {
                                                 </span>
                                                 <span class="text-sm">${item.title}</span>
                                             </div>
-                                            <span class="text-sm font-medium">${window.UserSession?.getCurrency()}${item.total}</span>
+                                            <span class="text-sm font-medium">${UserSession?.getCurrency()}${item.total}</span>
                                         </div>
                                     `).join('')}
                                 </div>
@@ -378,21 +378,21 @@ function CustomerDetails() {
                             <div class="border-t border-gray-100 -mx-4 px-4 pt-3">
                                 <div class="flex justify-between items-center text-sm">
                                     <span class="text-gray-600">Items Total</span>
-                                    <span class="font-medium">${window.UserSession?.getCurrency()}${order.itemTotal}</span>
+                                    <span class="font-medium">${UserSession?.getCurrency()}${order.itemTotal}</span>
                                 </div>
                                 <div class="flex justify-between items-center text-sm mt-1">
                                     <span class="text-gray-600">Tax (18%)</span>
-                                    <span class="font-medium">${window.UserSession?.getCurrency()}${order.taxAmount.toFixed(2)}</span>
+                                    <span class="font-medium">${UserSession?.getCurrency()}${order.taxAmount.toFixed(2)}</span>
                                 </div>
                                 ${order.discount > 0 ? `
                                     <div class="flex justify-between items-center text-sm mt-1">
                                         <span class="text-gray-600">Discount</span>
-                                        <span class="font-medium text-green-600">-${window.UserSession?.getCurrency()}${order.discount}</span>
+                                        <span class="font-medium text-green-600">-${UserSession?.getCurrency()}${order.discount}</span>
                                     </div>
                                 ` : ''}
                                 <div class="flex justify-between items-center font-medium mt-2 pt-2 border-t border-gray-100">
                                     <span>Total Amount</span>
-                                    <span class="text-red-600">${window.UserSession?.getCurrency()}${(order.finalAmount - order.discount).toFixed(2)}</span>
+                                    <span class="text-red-600">${UserSession?.getCurrency()}${(order.finalAmount - order.discount).toFixed(2)}</span>
                                 </div>
                             </div>
 
@@ -450,7 +450,7 @@ function CustomerDetails() {
                     amount: data.amount || 0,
                     type: 'DEPOSIT',
                     date: transactionDate,
-                    description: `Deposited ${window.UserSession?.getCurrency()}${data.amount} in ${data.mode} payment.`,
+                    description: `Deposited ${UserSession?.getCurrency()}${data.amount} in ${data.mode} payment.`,
                     balance: 0 // Will calculate
                 };
             });
@@ -592,7 +592,7 @@ function CustomerDetails() {
                     <label for="deposit-amount" class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <span class="text-gray-500">${window.UserSession?.getCurrency()}</span>
+                            <span class="text-gray-500">${UserSession?.getCurrency()}</span>
                         </div>
                         <input type="number" id="deposit-amount" class="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500" placeholder="0.00" min="1" step="1">
                     </div>
@@ -620,7 +620,7 @@ function CustomerDetails() {
         `;
 
         const self = this;
-        const depositModal = window.ModalManager.createSideDrawerModal({
+        const depositModal = ModalManager.createSideDrawerModal({
             id: 'deposit-modal',
             title: 'Add Balance',
             content: depositContent,
@@ -633,7 +633,7 @@ function CustomerDetails() {
                     const paymentMode = document.querySelector('input[name="payment-mode"]:checked').value;
 
                     if (!amount || amount <= 0) {
-                        window.ModalManager.showToast('Please enter a valid amount', { type: 'error' });
+                        ModalManager.showToast('Please enter a valid amount', { type: 'error' });
                         return;
                     }
 
@@ -647,7 +647,7 @@ function CustomerDetails() {
                         });
 
                         // Show success message
-                        window.ModalManager.showToast(`Added ${window.UserSession?.getCurrency()}${amount} to ${customerData.name}'s balance`);
+                        ModalManager.showToast(`Added ${UserSession?.getCurrency()}${amount} to ${customerData.name}'s balance`);
 
                         // Close modal
                         modalControl.close();
@@ -656,12 +656,12 @@ function CustomerDetails() {
                         self.showCustomerDetailsModal(customerData);
 
                         // Refresh customers list in main page
-                        if (window.refreshCustomers && typeof window.refreshCustomers === 'function') {
-                            window.refreshCustomers();
+                        if (fetchCustomers && typeof fetchCustomers === 'function') {
+                            fetchCustomers();
                         }
                     } catch (error) {
                         console.error("Error adding balance:", error);
-                        window.ModalManager.showToast("Failed to add balance", { type: "error" });
+                        ModalManager.showToast("Failed to add balance", { type: "error" });
                     }
                 });
             }
@@ -697,7 +697,7 @@ function CustomerDetails() {
         `;
 
         const self = this;
-        const editModal = window.ModalManager.createSideDrawerModal({
+        const editModal = ModalManager.createSideDrawerModal({
             id: 'edit-name-modal',
             title: 'Edit Customer',
             content: editNameContent,
@@ -721,7 +721,7 @@ function CustomerDetails() {
                         });
 
                         // Show success message
-                        window.ModalManager.showToast(`Updated customer details`);
+                        ModalManager.showToast(`Updated customer details`);
 
                         // Close modal
                         modalControl.close();
@@ -734,12 +734,12 @@ function CustomerDetails() {
                         self.showCustomerDetailsModal(customerData);
 
                         // Refresh customers list
-                        if (window.refreshCustomers && typeof window.refreshCustomers === 'function') {
-                            window.refreshCustomers();
+                        if (fetchCustomers && typeof fetchCustomers === 'function') {
+                            fetchCustomers();
                         }
                     } catch (error) {
                         console.error("Error updating customer details:", error);
-                        window.ModalManager.showToast("Failed to update details", { type: "error" });
+                        ModalManager.showToast("Failed to update details", { type: "error" });
                     }
                 });
 
@@ -752,27 +752,27 @@ function CustomerDetails() {
     // Handle send reminder
     this.handleSendReminder = function (customerData) {
         if (!customerData.phone) {
-            window.ModalManager.showToast("No phone number available for this customer", { type: "error" });
+            ModalManager.showToast("No phone number available for this customer", { type: "error" });
             return;
         }
 
         const balance = Number(customerData.balance || 0);
         if (balance >= 0) {
-            window.ModalManager.showToast("This customer doesn't have a negative balance", { type: "error" });
+            ModalManager.showToast("This customer doesn't have a negative balance", { type: "error" });
             return;
         }
 
-        const currencySymbol = window.UserSession?.getCurrency();
+        const currencySymbol = UserSession?.getCurrency();
         const message = `Hi ${customerData.name || 'Customer'}, this is a reminder that you have an outstanding balance of ${currencySymbol}${Math.abs(balance)} with us. Please clear your dues at your earliest convenience. Thank you.`;
 
         window.open(`https://wa.me/${customerData.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
 
-        window.ModalManager.showToast("WhatsApp message opened", { type: "success" });
+        ModalManager.showToast("WhatsApp message opened", { type: "success" });
     };
 
     // Use common toast
     this.showToast = function (message, type = "success") {
-        window.ModalManager.showToast(message, { type });
+        ModalManager.showToast(message, { type });
     };
 
     // Update the customer UI when data changes
@@ -783,7 +783,7 @@ function CustomerDetails() {
         const balanceElement = modal.container.querySelector('.mt-4.p-4.bg-red-50 p.text-xl.font-bold');
         if (balanceElement) {
             balanceElement.className = `text-xl font-bold ${Number(customerData.balance || 0) < 0 ? 'text-red-600' : 'text-green-600'}`;
-            const currencySymbol = window.UserSession?.getCurrency();
+            const currencySymbol = UserSession?.getCurrency();
             balanceElement.textContent = `${currencySymbol}${Number(customerData.balance || 0) < 0
                 ? `-${Math.abs(Number(customerData.balance || 0)).toLocaleString()}`
                 : Number(customerData.balance || 0).toLocaleString()}`;
@@ -837,6 +837,3 @@ CustomerDetails.showCustomerDetailsModal = function (customer, existingModal) {
     const instance = new CustomerDetails();
     return instance.showCustomerDetailsModal(customer, existingModal);
 };
-
-// Make the component globally available
-window.CustomerDetails = CustomerDetails; 

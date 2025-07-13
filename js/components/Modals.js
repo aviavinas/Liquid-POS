@@ -1,24 +1,26 @@
-const React = window.React;
-const ReactDOM = window.ReactDOM;
-
-// Modal components for the application
+import React, { useState, useEffect, useRef, useCallback, useMemo, createElement } from 'react';
+import { useOrders } from '../contexts/OrderContext.js';
+import { BluetoothPrinting } from '../utils/BluetoothPrinting.js';
+import { getModalClasses, getModalOverlayClasses, showToast } from '../utils.js';
+import { POS } from '../pages/POS.js';
+import ReactDOM from 'react-dom/client';
 
 // Add Table Modal Component
-function AddTableModal({ isOpen, onClose, seller }) {
-    const [title, setTitle] = React.useState('');
-    const [desc, setDesc] = React.useState('');
-    const [error, setError] = React.useState(null);
-    const [usingModalManager, setUsingModalManager] = React.useState(false);
+export function AddTableModal({ isOpen, onClose, seller }) {
+    const [title, setTitle] = useState('');
+    const [desc, setDesc] = useState('');
+    const [error, setError] = useState(null);
+    const [usingModalManager, setUsingModalManager] = useState(false);
 
     // Reset form when modal opens
-    React.useEffect(() => {
+    useEffect(() => {
         if (isOpen) {
             setTitle('');
             setDesc('');
             setError(null);
 
             // Use ModalManager if available
-            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
                 setUsingModalManager(true);
                 showAddTableModal();
             } else {
@@ -38,23 +40,23 @@ function AddTableModal({ isOpen, onClose, seller }) {
             }
 
             // Add new table
-            await window.sdk.profile.update({
+            await sdk.profile.update({
                 tables: [...currentTables, { title: newTitle, desc: newDesc }]
             });
 
             // Track analytics if available
-            if (window.sdk.analytics) {
-                window.sdk.analytics.logEvent('add_table', {
+            if (sdk.analytics) {
+                sdk.analytics.logEvent('add_table', {
                     table_id: newTitle,
                     seller_id: seller?.id
                 });
             }
 
-            window.ModalManager?.showToast('Table added successfully');
+            ModalManager?.showToast('Table added successfully');
 
             // Trigger UI refresh
-            if (window.refreshTables && typeof window.refreshTables === 'function') {
-                window.refreshTables();
+            if (refreshTables && typeof refreshTables === 'function') {
+                refreshTables();
             }
 
             return true;
@@ -65,7 +67,7 @@ function AddTableModal({ isOpen, onClose, seller }) {
     };
 
     const showAddTableModal = () => {
-        if (!window.ModalManager || typeof window.ModalManager.createCenterModal !== 'function') {
+        if (!ModalManager || typeof ModalManager.createCenterModal !== 'function') {
             return;
         }
 
@@ -119,7 +121,7 @@ function AddTableModal({ isOpen, onClose, seller }) {
             </div>
         `;
 
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManager.createCenterModal({
             id: 'add-table-modal',
             title: 'Add New Table',
             content: content,
@@ -266,19 +268,19 @@ function AddTableModal({ isOpen, onClose, seller }) {
 }
 
 // Rename Room Modal Component
-function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
-    const [title, setTitle] = React.useState('');
-    const [error, setError] = React.useState(null);
-    const [usingModalManager, setUsingModalManager] = React.useState(false);
+export function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
+    const [title, setTitle] = useState('');
+    const [error, setError] = useState(null);
+    const [usingModalManager, setUsingModalManager] = useState(false);
 
     // Set initial title when modal opens
-    React.useEffect(() => {
+    useEffect(() => {
         if (isOpen) {
             setTitle(tableId || variant || '');
             setError(null);
 
             // Use ModalManager if available
-            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
                 setUsingModalManager(true);
                 showRenameRoomModal();
             } else {
@@ -289,7 +291,7 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
 
     // Function to show modal using ModalManager
     const showRenameRoomModal = () => {
-        if (!window.ModalManager || typeof window.ModalManager.createCenterModal !== 'function') {
+        if (!ModalManager || typeof ModalManager.createCenterModal !== 'function') {
             return;
         }
 
@@ -333,7 +335,7 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
             </div>
         `;
 
-        const modal = window.ModalManager.createCenterModal({
+        const modal = ModalManager.createCenterModal({
             id: 'rename-room-modal',
             title: modalTitle,
             content: content,
@@ -378,7 +380,7 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
                                 const updatedVars = [...vars];
                                 updatedVars[index] = { title: newTitle };
 
-                                await window.sdk.profile.update({ priceVariants: updatedVars });
+                                await sdk.profile.update({ priceVariants: updatedVars });
                             } else if (tableId) {
                                 // Rename table
                                 const tables = seller?.tables || [];
@@ -393,7 +395,7 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
                                 const updatedTables = [...tables];
                                 updatedTables[index] = { ...updatedTables[index], title: newTitle };
 
-                                await window.sdk.profile.update({ tables: updatedTables });
+                                await sdk.profile.update({ tables: updatedTables });
                             } else {
                                 errorContainer.textContent = "Can't rename room";
                                 errorContainer.classList.remove('hidden');
@@ -401,11 +403,11 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
                             }
 
                             // Trigger UI refresh
-                            if (window.refreshTables && typeof window.refreshTables === 'function') {
-                                window.refreshTables();
+                            if (refreshTables && typeof refreshTables === 'function') {
+                                refreshTables();
                             }
 
-                            window.ModalManager.showToast('Renamed successfully');
+                            ModalManager.showToast('Renamed successfully');
                             modalControl.close();
                             onClose();
                         } catch (err) {
@@ -442,7 +444,7 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
                 const updatedVars = [...vars];
                 updatedVars[index] = { title };
 
-                await window.sdk.profile.update({ priceVariants: updatedVars });
+                await sdk.profile.update({ priceVariants: updatedVars });
             } else if (tableId) {
                 // Rename table
                 const tables = seller?.tables || [];
@@ -456,15 +458,15 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
                 const updatedTables = [...tables];
                 updatedTables[index] = { ...updatedTables[index], title: newTitle };
 
-                await window.sdk.profile.update({ tables: updatedTables });
+                await sdk.profile.update({ tables: updatedTables });
             } else {
                 setError("Can't rename room");
                 return;
             }
 
             // Trigger UI refresh
-            if (window.refreshTables && typeof window.refreshTables === 'function') {
-                window.refreshTables();
+            if (Tables && typeof refreshTables === 'function') {
+                refreshTables();
             }
 
             showToast('Renamed successfully');
@@ -533,9 +535,9 @@ function RenameRoomModal({ isOpen, onClose, tableId, variant, seller }) {
 }
 
 // Profile Menu Component
-function ProfileMenu({ isOpen, onClose, seller }) {
-    const { downloadQr } = window.useProfile ? window.useProfile() : { downloadQr: () => { } };
-    const [showProfileEditor, setShowProfileEditor] = React.useState(false);
+export function ProfileMenu({ isOpen, onClose, seller }) {
+    const { downloadQr } = useProfile ? useProfile() : { downloadQr: () => { } };
+    const [showProfileEditor, setShowProfileEditor] = useState(false);
 
     if (!isOpen) return null;
 
@@ -665,8 +667,8 @@ function ProfileMenu({ isOpen, onClose, seller }) {
 }
 
 // Add Inventory Modal Component
-function AddInventoryModal({ isOpen, onClose, onSave, editItem = null }) {
-    const [formData, setFormData] = React.useState({
+export function AddInventoryModal({ isOpen, onClose, onSave, editItem = null }) {
+    const [formData, setFormData] = useState({
         name: '',
         quantity: '',
         unit: 'kg',
@@ -674,7 +676,7 @@ function AddInventoryModal({ isOpen, onClose, onSave, editItem = null }) {
     });
 
     // Initialize form data when editItem changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (editItem) {
             setFormData({
                 name: editItem.name || '',
@@ -804,13 +806,13 @@ function AddInventoryModal({ isOpen, onClose, onSave, editItem = null }) {
 }
 
 // OrderRoom Modal Component
-function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN", seller }) {
+export function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN", seller }) {
     // Get order data and methods directly from OrderContext
     const {
         getOrdersForSource,
         isLoading: ordersLoading,
         refreshCompletedOrders
-    } = window.useOrders ? window.useOrders() : {
+    } = useOrders ? useOrders() : {
         getOrdersForSource: () => [],
         isLoading: true,
         refreshCompletedOrders: () => { }
@@ -820,26 +822,26 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     const orders = getOrdersForSource(tableId, variant, orderStatus);
 
     // State to track printer connection status
-    const [printerConnected, setPrinterConnected] = React.useState(
-        window.BluetoothPrinting ? window.BluetoothPrinting.connected : false
+    const [printerConnected, setPrinterConnected] = useState(
+        BluetoothPrinting ? BluetoothPrinting.connected : false
     );
-    const [connectingPrinter, setConnectingPrinter] = React.useState(false);
-    const [managedPrinters, setManagedPrinters] = React.useState([]);
-    const [selectedPrinter, setSelectedPrinter] = React.useState(null);
-    const [showPrinterDropdown, setShowPrinterDropdown] = React.useState(false);
-    const printerDropdownRef = React.useRef(null);
+    const [connectingPrinter, setConnectingPrinter] = useState(false);
+    const [managedPrinters, setManagedPrinters] = useState([]);
+    const [selectedPrinter, setSelectedPrinter] = useState(null);
+    const [showPrinterDropdown, setShowPrinterDropdown] = useState(false);
+    const printerDropdownRef = useRef(null);
 
     // Load managed printers
-    React.useEffect(() => {
-        if (window.BluetoothPrinting) {
-            const printers = window.BluetoothPrinting.getSavedPrinters() || [];
+    useEffect(() => {
+        if (BluetoothPrinting) {
+            const printers = BluetoothPrinting.getSavedPrinters() || [];
             setManagedPrinters(printers);
 
             // Set the active printer (connected, default, or first available)
-            const connectedPrinter = window.BluetoothPrinting.device ?
-                printers.find(p => p.deviceId === window.BluetoothPrinting.device.id) : null;
+            const connectedPrinter = BluetoothPrinting.device ?
+                printers.find(p => p.deviceId === BluetoothPrinting.device.id) : null;
 
-            const activeId = window.BluetoothPrinting.getActivePrinterId();
+            const activeId = BluetoothPrinting.getActivePrinterId();
             const activePrinter = printers.find(p => p.id === activeId);
 
             const defaultPrinter = printers.find(p => p.isDefault);
@@ -847,28 +849,28 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
             setSelectedPrinter(connectedPrinter || activePrinter || defaultPrinter || (printers.length > 0 ? printers[0] : null));
 
             // Try to reconnect to the saved printer if we have one and we're not already connected
-            if (isOpen && !window.BluetoothPrinting.connected && window.BluetoothPrinting.lastConnectedDevice) {
+            if (isOpen && !BluetoothPrinting.connected && BluetoothPrinting.lastConnectedDevice) {
                 tryReconnectToPrinter();
             }
         }
     }, [isOpen]);
 
     // Attempt to reconnect to the last used printer when the modal opens
-    const tryReconnectToPrinter = React.useCallback(async () => {
-        if (!window.BluetoothPrinting || window.BluetoothPrinting.connected) return;
+    const tryReconnectToPrinter = useCallback(async () => {
+        if (!BluetoothPrinting || BluetoothPrinting.connected) return;
 
         try {
             setConnectingPrinter(true);
             console.log('OrderRoom: Attempting to reconnect to saved printer...');
 
             // First try silent reconnect without showing any message to avoid UI clutter
-            const reconnected = await window.BluetoothPrinting.attemptSilentReconnect();
+            const reconnected = await BluetoothPrinting.attemptSilentReconnect();
 
             if (reconnected) {
                 setPrinterConnected(true);
                 // Show success message only when reconnection is successful
-                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                    window.ModalManager.showToast(`Printer ready`, { type: "success" });
+                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                    ModalManager.showToast(`Printer ready`, { type: "success" });
                 } else {
                     showToast(`Printer ready`, "success");
                 }
@@ -882,7 +884,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, []);
 
     // Debug logging
-    React.useEffect(() => {
+    useEffect(() => {
         console.log(`[OrderRoom] Component mounted/updated for ${tableId ? `Table ${tableId}` : variant || 'Default'}`);
         console.log(`[OrderRoom] Received ${orders.length} orders with status "${orderStatus}"`);
 
@@ -899,10 +901,10 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, [orders, tableId, variant, orderStatus]);
 
     // Update printer connection status when BluetoothPrinting state changes
-    React.useEffect(() => {
-        if (window.BluetoothPrinting) {
+    useEffect(() => {
+        if (BluetoothPrinting) {
             const checkConnectionStatus = () => {
-                setPrinterConnected(window.BluetoothPrinting.connected);
+                setPrinterConnected(BluetoothPrinting.connected);
             };
 
             // Initial check
@@ -916,7 +918,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, [isOpen]);
 
     // Handle clicks outside of printer dropdown
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (printerDropdownRef.current && !printerDropdownRef.current.contains(event.target)) {
                 setShowPrinterDropdown(false);
@@ -930,23 +932,23 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, []);
 
     // Keep the disconnect function when closing the room
-    React.useEffect(() => {
-        if (!isOpen && printerConnected && window.BluetoothPrinting) {
+    useEffect(() => {
+        if (!isOpen && printerConnected && BluetoothPrinting) {
             // We don't need to actually disconnect the printer, as we want to maintain
             // the connection for future use. Just update the UI state.
-            setPrinterConnected(window.BluetoothPrinting.connected);
+            setPrinterConnected(BluetoothPrinting.connected);
         }
     }, [isOpen, printerConnected]);
 
     // Calculate totals for progress bar
-    const totalItems = React.useMemo(() => {
+    const totalItems = useMemo(() => {
         return orders.reduce((sum, order) => {
             const itemCount = order.items?.reduce((itemSum, item) => itemSum + (item.quantity || item.qnt || 1), 0) || 0;
             return sum + itemCount;
         }, 0);
     }, [orders]);
 
-    const servedItems = React.useMemo(() => {
+    const servedItems = useMemo(() => {
         return orders.reduce((sum, order) => {
             const servedCount = order.items?.filter(item => item.served)
                 .reduce((itemSum, item) => itemSum + (item.quantity || item.qnt || 1), 0) || 0;
@@ -954,20 +956,20 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
         }, 0);
     }, [orders]);
 
-    const progressPercent = React.useMemo(() => {
+    const progressPercent = useMemo(() => {
         const progress = totalItems > 0 ? servedItems / totalItems : 0;
         return Math.round(progress * 100);
     }, [totalItems, servedItems]);
 
-    const [error, setError] = React.useState(null);
-    const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
-    const menuRef = React.useRef(null);
-    const dialogRef = React.useRef(null);
-    const [isClosing, setIsClosing] = React.useState(false);
+    const [error, setError] = useState(null);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const menuRef = useRef(null);
+    const dialogRef = useRef(null);
+    const [isClosing, setIsClosing] = useState(false);
 
     // Check for mobile/desktop on resize
-    React.useEffect(() => {
+    useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth < 768);
         };
@@ -979,7 +981,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, []);
 
     // Add click event listener to close menu when clicking outside
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setIsMenuOpen(false);
@@ -993,7 +995,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     }, []);
 
     // Add swipe gesture for mobile
-    React.useEffect(() => {
+    useEffect(() => {
         if (!isOpen || !dialogRef.current) return;
 
         let startX, startY;
@@ -1038,25 +1040,25 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
         setSelectedPrinter(printer);
         setShowPrinterDropdown(false);
 
-        if (window.BluetoothPrinting) {
+        if (BluetoothPrinting) {
             // Set as active printer for printing operations
-            window.BluetoothPrinting.setActivePrinterId(printer.id);
+            BluetoothPrinting.setActivePrinterId(printer.id);
 
             // If we need to connect to the selected printer
             if (!printerConnected && printer.deviceId) {
                 setConnectingPrinter(true);
 
                 // Try to connect to this specific printer using its deviceId
-                window.BluetoothPrinting.lastConnectedDevice = {
+                BluetoothPrinting.lastConnectedDevice = {
                     id: printer.deviceId,
                     name: printer.name || printer.deviceName
                 };
 
-                window.BluetoothPrinting.connect()
+                BluetoothPrinting.connect()
                     .then(() => {
                         setPrinterConnected(true);
-                        if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                            window.ModalManager.showToast(`Connected to ${printer.name}`, { type: "success" });
+                        if (ModalManager && typeof ModalManager.showToast === 'function') {
+                            ModalManager.showToast(`Connected to ${printer.name}`, { type: "success" });
                         } else {
                             showToast(`Connected to ${printer.name}`, "success");
                         }
@@ -1068,8 +1070,8 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                             !error.message.includes("Device selection cancelled") &&
                             !error.message.includes("cancelled by user") &&
                             !error.message.includes("No printer selected")) {
-                            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                window.ModalManager.showToast("Error connecting to printer", { type: "error" });
+                            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                ModalManager.showToast("Error connecting to printer", { type: "error" });
                             } else {
                                 showToast("Error connecting to printer", "error");
                             }
@@ -1096,7 +1098,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
 
     const handleAddNewOrder = () => {
         // Check if POS component is available
-        if (!window.POS) {
+        if (!POS) {
             console.error("POS component is not defined");
             showToast("Cannot open POS: component not available", "error");
             return;
@@ -1114,7 +1116,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
 
             // Render the POS component
             root.render(
-                React.createElement(window.POS, {
+                createElement(POS, {
                     title: "New Order",
                     tableId: tableId,
                     variant: variant,
@@ -1265,7 +1267,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
             const updatedTables = currentTables.filter(table => table.title !== tableId);
 
             // Update seller document in Firestore
-            await window.sdk.profile.update({
+            await sdk.profile.update({
                 tables: updatedTables
             });
 
@@ -1278,7 +1280,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
     };
 
     const showRenameRoomModal = (tableId, variant) => {
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
             const modalId = 'rename-room-modal-' + Date.now();
             const initialTitle = tableId || variant || '';
             const modalTitle = tableId ? "Rename Table" : "Rename Channel";
@@ -1320,7 +1322,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManager.createCenterModal({
                 id: modalId,
                 title: modalTitle,
                 content: content,
@@ -1362,7 +1364,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                     const updatedVars = [...vars];
                                     updatedVars[index] = { title: newTitle };
 
-                                    await window.sdk.profile.update({ priceVariants: updatedVars });
+                                    await sdk.profile.update({ priceVariants: updatedVars });
                                 } else if (tableId) {
                                     const tables = seller?.tables || [];
                                     const index = tables.findIndex(t => t.title === tableId);
@@ -1376,15 +1378,15 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                     const updatedTables = [...tables];
                                     updatedTables[index] = { ...updatedTables[index], title: newTitle };
 
-                                    await window.sdk.profile.update({ tables: updatedTables });
+                                    await sdk.profile.update({ tables: updatedTables });
                                 }
 
                                 // Trigger UI refresh
-                                if (window.refreshTables && typeof window.refreshTables === 'function') {
-                                    window.refreshTables();
+                                if (refreshTables && typeof refreshTables === 'function') {
+                                    refreshTables();
                                 }
 
-                                window.ModalManager.showToast('Renamed successfully');
+                                ModalManager.showToast('Renamed successfully');
                                 modalControl.close();
                             } catch (err) {
                                 console.error('Error renaming:', err);
@@ -1425,7 +1427,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                     <div className="p-4 flex items-center justify-between">
                         <h2 className="text-xl font-semibold">{variant || `Table ${tableId}`}</h2>
                         <div className="flex items-center gap-3">
-                            {window.BluetoothPrinting && window.BluetoothPrinting.isSupported() && (
+                            {BluetoothPrinting && BluetoothPrinting.isSupported() && (
                                 <div className="relative" ref={printerDropdownRef}>
                                     <div
                                         className={`flex items-center gap-2 px-2 py-1 rounded-lg cursor-pointer ${printerConnected ? 'bg-green-50 text-green-600' : 'bg-gray-50 text-gray-600'} hover:bg-opacity-80 transition-colors`}
@@ -1472,11 +1474,11 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                                                 className="w-full text-xs text-left px-3 py-2 text-red-500 hover:bg-gray-50 rounded flex items-center gap-2"
                                                                 onClick={() => {
                                                                     setShowPrinterDropdown(false);
-                                                                    window.BluetoothPrinting.connect()
+                                                                    BluetoothPrinting.connect()
                                                                         .then(() => {
                                                                             setPrinterConnected(true);
                                                                             // Refresh printers list
-                                                                            const printers = window.BluetoothPrinting.getSavedPrinters() || [];
+                                                                            const printers = BluetoothPrinting.getSavedPrinters() || [];
                                                                             setManagedPrinters(printers);
                                                                         });
                                                                 }}
@@ -1494,11 +1496,11 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                                                 className="w-full text-xs text-left px-3 py-2 text-red-500 hover:bg-gray-50 rounded flex items-center gap-2"
                                                                 onClick={() => {
                                                                     setShowPrinterDropdown(false);
-                                                                    window.BluetoothPrinting.connect()
+                                                                    BluetoothPrinting.connect()
                                                                         .then(() => {
                                                                             setPrinterConnected(true);
                                                                             // Refresh printers list
-                                                                            const printers = window.BluetoothPrinting.getSavedPrinters() || [];
+                                                                            const printers = BluetoothPrinting.getSavedPrinters() || [];
                                                                             setManagedPrinters(printers);
                                                                         });
                                                                 }}
@@ -1592,7 +1594,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                         // Add methods that OrderView component expects
                                         serveItem: async (item, served) => {
                                             try {
-                                                const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                                                const orderRef = sdk.db.collection("Orders").doc(order.id);
                                                 const orderDoc = await orderRef.get();
                                                 if (!orderDoc.exists) throw new Error('Order not found');
 
@@ -1613,7 +1615,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                         },
                                         addItem: async (item) => {
                                             try {
-                                                const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                                                const orderRef = sdk.db.collection("Orders").doc(order.id);
                                                 const orderDoc = await orderRef.get();
                                                 if (!orderDoc.exists) throw new Error('Order not found');
 
@@ -1635,7 +1637,7 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
                                         },
                                         removeItem: async (item) => {
                                             try {
-                                                const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                                                const orderRef = sdk.db.collection("Orders").doc(order.id);
                                                 const orderDoc = await orderRef.get();
                                                 if (!orderDoc.exists) throw new Error('Order not found');
 
@@ -1703,16 +1705,16 @@ function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KITCHEN",
 }
 
 // OrderView Component
-function OrderView({ order, tableId, variant }) {
+export function OrderView({ order, tableId, variant }) {
     // Calculate served items
     const servedItems = order.items?.filter(item => item.served).length || 0;
     const totalItems = order.items?.length || 0;
     const progressPercent = totalItems > 0 ? (servedItems / totalItems) * 100 : 0;
-    const [showContextMenu, setShowContextMenu] = React.useState(false);
-    const menuRef = React.useRef(null);
+    const [showContextMenu, setShowContextMenu] = useState(false);
+    const menuRef = useRef(null);
 
     // Close context menu when clicking outside
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (menuRef.current && !menuRef.current.contains(event.target)) {
                 setShowContextMenu(false);
@@ -1729,7 +1731,7 @@ function OrderView({ order, tableId, variant }) {
     const handleInstructionsChange = async (value) => {
         try {
             // Update the order in Firestore
-            await window.sdk.db.collection("Orders").doc(order.id).update({
+            await sdk.db.collection("Orders").doc(order.id).update({
                 instructions: value
             });
         } catch (error) {
@@ -1793,9 +1795,9 @@ function OrderView({ order, tableId, variant }) {
         setShowContextMenu(false);
 
         // Check if ModalManager is available
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
             // Fetch available tables from UserSession
-            const availableTables = window.UserSession?.seller?.tables || [];
+            const availableTables = UserSession?.seller?.tables || [];
 
             const modalId = 'shift-table-modal-' + Date.now();
             let content = `
@@ -1858,7 +1860,7 @@ function OrderView({ order, tableId, variant }) {
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManager.createCenterModal({
                 id: modalId,
                 title: `Shift Order #${order.billNo || order.id?.slice(-6)} to Another Table`,
                 content: content,
@@ -1895,30 +1897,30 @@ function OrderView({ order, tableId, variant }) {
                                 }
 
                                 // Update the order in Firestore
-                                await window.sdk.db.collection("Orders").doc(order.id).update(updateData);
+                                await sdk.db.collection("Orders").doc(order.id).update(updateData);
 
                                 modalControl.close();
 
-                                if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                                    window.ModalManager.showToast(`Order shifted to table ${targetTableId}`);
+                                if (ModalManager && typeof ModalManager.showToast === 'function') {
+                                    ModalManager.showToast(`Order shifted to table ${targetTableId}`);
                                 } else {
                                     showToast(`Order shifted to table ${targetTableId}`);
                                 }
 
                                 // Comprehensive UI refresh approach
                                 // 1. Refresh tables data
-                                if (window.refreshTables && typeof window.refreshTables === 'function') {
-                                    window.refreshTables();
+                                if (refreshTables && typeof refreshTables === 'function') {
+                                    refreshTables();
                                 }
 
                                 // 2. Force reload of kitchen orders to update the dining section
-                                if (window.setupKitchenOrdersListener && typeof window.setupKitchenOrdersListener === 'function') {
-                                    window.setupKitchenOrdersListener();
+                                if (setupKitchenOrdersListener && typeof setupKitchenOrdersListener === 'function') {
+                                    setupKitchenOrdersListener();
                                 }
 
                                 // 3. Trigger any order context refresh if available
-                                if (window.refreshOrders && typeof window.refreshOrders === 'function') {
-                                    window.refreshOrders();
+                                if (refreshOrders && typeof refreshOrders === 'function') {
+                                    refreshOrders();
                                 }
 
                                 // 4. Add a marker to the dining tables section to detect if it's empty after update
@@ -1960,11 +1962,11 @@ function OrderView({ order, tableId, variant }) {
     const handlePrintKOT = async () => {
         try {
             // Try Bluetooth printing first if available
-            if (window.BluetoothPrinting && window.BluetoothPrinting.isSupported()) {
+            if (BluetoothPrinting && BluetoothPrinting.isSupported()) {
                 try {
                     // Get order channel for proper printer selection
                     const channel = order.priceVariant || 'Default';
-                    await window.BluetoothPrinting.printKOT(order.id, channel);
+                    await BluetoothPrinting.printKOT(order.id, channel);
                     showToast("KOT printed successfully", "success");
                     return; // Exit if Bluetooth printing succeeds
                 } catch (btError) {
@@ -1998,10 +2000,10 @@ function OrderView({ order, tableId, variant }) {
             }
 
             // Traditional KOT printing (fallback)
-            if (window.UserSession?.seller?.kotEnabled) {
+            if (UserSession?.seller?.kotEnabled) {
                 try {
                     console.log("Attempting fallback KOT printing for order:", order.id);
-                    const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                    const orderRef = sdk.db.collection("Orders").doc(order.id);
                     const orderDoc = await orderRef.get();
                     if (!orderDoc.exists) {
                         throw new Error("Order not found for fallback printing.");
@@ -2011,7 +2013,7 @@ function OrderView({ order, tableId, variant }) {
                     // Check if there are newly added items
                     const newlyAddedItems = orderData.items?.filter(item => item.newlyAdded === true);
                     const hasNewItems = newlyAddedItems && newlyAddedItems.length > 0;
-                    
+
                     // Process the newly added items to show only the newly added quantities
                     const processedItems = hasNewItems ? newlyAddedItems.map(item => {
                         // If we have a specific newly added quantity, use that
@@ -2026,18 +2028,18 @@ function OrderView({ order, tableId, variant }) {
                         console.log(`Browser KOT: Item ${item.title} has no newlyAddedQty, using full quantity ${item.qnt}`);
                         return item; // Otherwise keep the item as is
                     }) : [];
-                    
+
                     // Check if any items have originalQnt property (indicating quantity additions)
                     const hasQuantityAdditions = processedItems.some(item => item.originalQnt !== undefined);
-                    const kotTitle = hasNewItems 
-                        ? (hasQuantityAdditions ? 'KITCHEN ORDER TICKET (ADDITIONS)' : 'KITCHEN ORDER TICKET (NEW ITEMS)') 
+                    const kotTitle = hasNewItems
+                        ? (hasQuantityAdditions ? 'KITCHEN ORDER TICKET (ADDITIONS)' : 'KITCHEN ORDER TICKET (NEW ITEMS)')
                         : 'KITCHEN ORDER TICKET';
-                    
+
                     let kotHtml = `
                         <div style="font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 280px; margin: 0 auto; padding: 10px;">
                             <h2 style="text-align: center; margin: 0 0 5px 0;">${kotTitle}</h2>
                             <p style="text-align: center; margin: 0 0 10px 0; border-bottom: 1px dashed #000; padding-bottom: 5px;">
-                                ${window.UserSession?.seller?.businessName || 'Your Business'}
+                                ${UserSession?.seller?.businessName || 'Your Business'}
                             </p>
                             <p><strong>Order #:</strong> ${orderData.billNo || orderData.id?.substring(0, 6) || 'N/A'}</p>
                             ${orderData.tableId ? `<p><strong>Table:</strong> ${orderData.tableId}</p>` : ''}
@@ -2050,7 +2052,7 @@ function OrderView({ order, tableId, variant }) {
 
                     // If there are newly added items, only print those with correct quantities
                     const itemsToPrint = hasNewItems ? processedItems : orderData.items;
-                    
+
                     if (itemsToPrint && itemsToPrint.length > 0) {
                         itemsToPrint.forEach(item => {
                             const quantity = item.quantity || item.qnt || 1;
@@ -2062,7 +2064,7 @@ function OrderView({ order, tableId, variant }) {
                                 kotHtml += `<div style="font-size: 10px; padding-left: 15px; margin-bottom: 3px;"><em>Notes: ${item.instructions}</em></div>`;
                             }
                         });
-                        
+
                         // After printing newly added items, clear their flags to avoid duplicate printing
                         if (hasNewItems) {
                             try {
@@ -2072,11 +2074,11 @@ function OrderView({ order, tableId, variant }) {
                                     newlyAdded: false,
                                     newlyAddedQty: 0  // Reset the newly added quantity as well
                                 }));
-                                
+
                                 // Schedule the update to run after printing is complete
                                 setTimeout(async () => {
                                     try {
-                                        const orderRef = window.sdk.db.collection("Orders").doc(orderData.id);
+                                        const orderRef = sdk.db.collection("Orders").doc(orderData.id);
                                         await orderRef.update({ items: updatedItems });
                                         console.log("Cleared newlyAdded flags and quantities after fallback KOT printing");
                                     } catch (err) {
@@ -2157,13 +2159,13 @@ function OrderView({ order, tableId, variant }) {
 
         try {
             // Try Bluetooth printing first if available
-            if (window.BluetoothPrinting && window.BluetoothPrinting.isSupported()) {
+            if (BluetoothPrinting && BluetoothPrinting.isSupported()) {
                 try {
-                    const printerAlreadyConnected = window.BluetoothPrinting.connected && window.BluetoothPrinting.characteristic;
+                    const printerAlreadyConnected = BluetoothPrinting.connected && BluetoothPrinting.characteristic;
                     if (printerAlreadyConnected) {
                         showToast("Printing bill using connected printer...", "info");
-                    } else if (window.BluetoothPrinting.lastConnectedDevice) {
-                        showToast(`Connecting to printer ${window.BluetoothPrinting.lastConnectedDevice.name}...`, "info");
+                    } else if (BluetoothPrinting.lastConnectedDevice) {
+                        showToast(`Connecting to printer ${BluetoothPrinting.lastConnectedDevice.name}...`, "info");
                     } else {
                         showToast("Select a printer to print bill", "info");
                     }
@@ -2171,7 +2173,7 @@ function OrderView({ order, tableId, variant }) {
                     // Get order channel and payment mode for proper template variables
                     const paymentMode = order.payMode || 'CASH';
                     const channel = order.priceVariant || 'Default';
-                    await window.BluetoothPrinting.printBill(order.id, paymentMode, false, channel);
+                    await BluetoothPrinting.printBill(order.id, paymentMode, false, channel);
                     showToast("Bill printed successfully via Bluetooth", "success");
                     billPrintedSuccessfully = true;
                 } catch (btError) {
@@ -2191,21 +2193,21 @@ function OrderView({ order, tableId, variant }) {
             }
 
             // Fallback to browser print if Bluetooth didn't succeed AND user didn't cancel Bluetooth
-            if (!billPrintedSuccessfully && !userCancelledBluetooth && (window.UserSession?.seller?.billEnabled !== false)) {
+            if (!billPrintedSuccessfully && !userCancelledBluetooth && (UserSession?.seller?.billEnabled !== false)) {
                 console.log("Attempting fallback browser print for bill:", order.id);
                 try {
-                    const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                    const orderRef = sdk.db.collection("Orders").doc(order.id);
                     const orderDoc = await orderRef.get();
                     if (!orderDoc.exists) throw new Error("Order not found for bill printing.");
                     const orderData = orderDoc.data();
 
                     // --- Bill HTML Formatting ---
                     let billHtml = `<div style="font-family: 'Courier New', monospace; font-size: 11px; width: 280px; margin: 0 auto; padding: 5px;">
-                        <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 14px;">${window.UserSession?.seller?.gstEnabled ? 'TAX INVOICE' : 'BILL/RECEIPT'}</h2>
-                        <p style="text-align: center; margin:0; font-size: 12px;"><strong>${window.UserSession?.seller?.businessName || 'Your Business'}</strong></p>
-                        ${window.UserSession?.seller?.address ? `<p style="text-align: center; font-size: 9px; margin:0;">${window.UserSession.seller.address}</p>` : ''}
-                        ${window.UserSession?.seller?.phone ? `<p style="text-align: center; font-size: 9px; margin:0;">Ph: ${window.UserSession.seller.phone}</p>` : ''}
-                        ${window.UserSession?.seller?.gstEnabled && window.UserSession?.seller?.gstIN ? `<p style="text-align: center; font-size: 9px; margin:0;">GSTIN: ${window.UserSession.seller.gstIN}</p>` : ''}
+                        <h2 style="text-align: center; margin: 0 0 5px 0; font-size: 14px;">${UserSession?.seller?.gstEnabled ? 'TAX INVOICE' : 'BILL/RECEIPT'}</h2>
+                        <p style="text-align: center; margin:0; font-size: 12px;"><strong>${UserSession?.seller?.businessName || 'Your Business'}</strong></p>
+                        ${UserSession?.seller?.address ? `<p style="text-align: center; font-size: 9px; margin:0;">${UserSession.seller.address}</p>` : ''}
+                        ${UserSession?.seller?.phone ? `<p style="text-align: center; font-size: 9px; margin:0;">Ph: ${UserSession.seller.phone}</p>` : ''}
+                        ${UserSession?.seller?.gstEnabled && UserSession?.seller?.gstIN ? `<p style="text-align: center; font-size: 9px; margin:0;">GSTIN: ${UserSession.seller.gstIN}</p>` : ''}
                         <hr style="border:none; border-top: 1px dashed #000; margin: 4px 0;" />
                         <div style="display:flex; justify-content:space-between; font-size:10px;"><span>Bill: ${orderData.billNo || orderData.id?.substring(0, 8) || 'N/A'}</span><span>${new Date(orderData.date?.toDate ? orderData.date.toDate() : orderData.date || new Date()).toLocaleDateString()}</span></div>
                         <div style="font-size:10px;">Time: ${new Date(orderData.date?.toDate ? orderData.date.toDate() : orderData.date || new Date()).toLocaleTimeString()}</div>
@@ -2244,7 +2246,7 @@ function OrderView({ order, tableId, variant }) {
 
                     if (orderData.charges && Array.isArray(orderData.charges)) {
                         // Use ChargesCalculator for consistent charge calculations
-                        const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+                        const chargesCalculation = ChargesCalculator?.calculateCharges(
                             totalAmount,
                             orderData.charges,
                             orderData.discount || 0
@@ -2301,9 +2303,9 @@ function OrderView({ order, tableId, variant }) {
 
             // Only complete order if it wasn't a user cancellation of Bluetooth and print was attempted or bill printing is disabled
             if (!userCancelledBluetooth) {
-                const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+                const orderRef = sdk.db.collection("Orders").doc(order.id);
                 await orderRef.update({
-                    status: window.sdk.FieldValue.arrayUnion({
+                    status: sdk.FieldValue.arrayUnion({
                         label: "COMPLETED",
                         date: new Date()
                     }),
@@ -2315,8 +2317,8 @@ function OrderView({ order, tableId, variant }) {
                 });
                 showToast("Order marked as COMPLETED", "info");
 
-                if (window.refreshOrders) window.refreshOrders();
-                else if (window.refreshData) window.refreshData();
+                if (refreshOrders) refreshOrders();
+                else if (refreshData) refreshData();
                 return billPrintedSuccessfully;
             } else {
                 // User cancelled Bluetooth, don't complete order automatically
@@ -2379,7 +2381,7 @@ function OrderView({ order, tableId, variant }) {
 
                 // Render the CheckoutSheet component
                 root.render(
-                    React.createElement(window.CheckoutSheet, {
+                    createElement(CheckoutSheet, {
                         cart: cart,
                         clearCallback: async () => {
                             // Cleanup and close
@@ -2388,10 +2390,10 @@ function OrderView({ order, tableId, variant }) {
                                 document.body.removeChild(checkoutContainer);
                             }
                             // Refresh orders list or page
-                            if (window.refreshOrders && typeof window.refreshOrders === 'function') {
-                                window.refreshOrders();
-                            } else if (window.refreshData && typeof window.refreshData === 'function') {
-                                window.refreshData();
+                            if (refreshOrders && typeof refreshOrders === 'function') {
+                                refreshOrders();
+                            } else if (refreshData && typeof refreshData === 'function') {
+                                refreshData();
                             }
                         },
                         tableId: tableId,
@@ -2423,7 +2425,7 @@ function OrderView({ order, tableId, variant }) {
 
     const handleAddNewItem = () => {
         // Check if POS component is available
-        if (!window.POS) {
+        if (!POS) {
             console.error("POS component is not defined");
             showToast("Cannot open POS: component not available", "error");
             return;
@@ -2442,12 +2444,12 @@ function OrderView({ order, tableId, variant }) {
             // Convert order to the format expected by POS component
             const orderForPOS = {
                 ...order,
-                ref: window.sdk.db.collection("Orders").doc(order.id)
+                ref: sdk.db.collection("Orders").doc(order.id)
             };
 
             // Render the POS component
             root.render(
-                React.createElement(window.POS, {
+                createElement(POS, {
                     title: `Add to Order #${order.billNo || order.id?.slice(-6)}`,
                     tableId: tableId,
                     variant: variant,
@@ -2474,7 +2476,7 @@ function OrderView({ order, tableId, variant }) {
     const toggleItemServed = async (item, served) => {
         try {
             // Get a reference to the order document
-            const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+            const orderRef = sdk.db.collection("Orders").doc(order.id);
 
             // Get the current order data
             const orderDoc = await orderRef.get();
@@ -2505,7 +2507,7 @@ function OrderView({ order, tableId, variant }) {
     const handleRemoveItem = async (item) => {
         try {
             // Get a reference to the order document
-            const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+            const orderRef = sdk.db.collection("Orders").doc(order.id);
 
             // Get the current order data
             const orderDoc = await orderRef.get();
@@ -2551,7 +2553,7 @@ function OrderView({ order, tableId, variant }) {
     const handleAddItem = async (item) => {
         try {
             // Get a reference to the order document
-            const orderRef = window.sdk.db.collection("Orders").doc(order.id);
+            const orderRef = sdk.db.collection("Orders").doc(order.id);
 
             // Get the current order data
             const orderDoc = await orderRef.get();
@@ -2703,7 +2705,7 @@ function OrderView({ order, tableId, variant }) {
                             <div className="flex-1 min-w-0">
                                 <h4 className="font-medium text-gray-800 truncate">{item.title}</h4>
                                 <div className="flex items-center mt-1">
-                                    <span className="text-sm font-medium text-red-500">{window.UserSession?.getCurrency()}{item.price || 0}</span>
+                                    <span className="text-sm font-medium text-red-500">{UserSession?.getCurrency()}{item.price || 0}</span>
                                     {item.cat && (
                                         <>
                                             <span className="mx-1 text-gray-300">•</span>
@@ -2767,13 +2769,13 @@ function OrderView({ order, tableId, variant }) {
             <div className="p-4 border-t border-pink-100">
                 <div className="flex justify-between items-center">
                     <h3 className="font-medium text-gray-700">Sub Total:</h3>
-                    <span className="font-medium text-red-500 text-lg">{window.UserSession?.getCurrency()}{subtotal.toFixed(2)}</span>
+                    <span className="font-medium text-red-500 text-lg">{UserSession?.getCurrency()}{subtotal.toFixed(2)}</span>
                 </div>
 
                 {/* Use ChargesCalculator for consistent charge calculations */}
                 {(() => {
                     // Calculate charges using the utility - ensure charges is always an array
-                    const chargesCalculation = window.ChargesCalculator?.calculateCharges(
+                    const chargesCalculation = ChargesCalculator?.calculateCharges(
                         subtotal,
                         order.charges || [],
                         order.discount || 0
@@ -2794,7 +2796,7 @@ function OrderView({ order, tableId, variant }) {
                                     {calculatedCharges.map((charge, index) => (
                                         <div key={index} className="flex justify-between items-center text-sm">
                                             <span className="text-gray-600">{charge.displayName}:</span>
-                                            <span className="text-gray-800">{window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
+                                            <span className="text-gray-800">{UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -2804,7 +2806,7 @@ function OrderView({ order, tableId, variant }) {
                             {order.discount && parseFloat(order.discount) > 0 && (
                                 <div className="mt-2 flex justify-between items-center text-sm">
                                     <span className="text-green-600">Discount:</span>
-                                    <span className="text-green-600">- {window.UserSession?.getCurrency()}{parseFloat(order.discount).toFixed(2)}</span>
+                                    <span className="text-green-600">- {UserSession?.getCurrency()}{parseFloat(order.discount).toFixed(2)}</span>
                                 </div>
                             )}
 
@@ -2812,7 +2814,7 @@ function OrderView({ order, tableId, variant }) {
                             {(calculatedCharges && calculatedCharges.length > 0) || (order.discount && parseFloat(order.discount) > 0) ? (
                                 <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center">
                                     <h3 className="font-bold text-gray-800">Total:</h3>
-                                    <span className="font-bold text-red-500 text-lg">{window.UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
+                                    <span className="font-bold text-red-500 text-lg">{UserSession?.getCurrency()}{finalAmount.toFixed(2)}</span>
                                 </div>
                             ) : null}
                         </>
@@ -2844,19 +2846,19 @@ function OrderView({ order, tableId, variant }) {
 }
 
 // CustomerSearch Component
-function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [customers, setCustomers] = React.useState([]);
-    const [loading, setLoading] = React.useState(false);
-    const [error, setError] = React.useState(null);
-    const [showAddForm, setShowAddForm] = React.useState(false);
-    const [newCustomer, setNewCustomer] = React.useState({
+export function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
+    const [searchTerm, setSearchTerm] = useState('');
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newCustomer, setNewCustomer] = useState({
         name: '',
         phone: ''
     });
 
     // Search for customers when the search term changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (!searchTerm || searchTerm.length < 2) {
             setCustomers([]);
             return;
@@ -2868,7 +2870,7 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
                 setError(null);
 
                 // Search for customers
-                const results = await window.sdk.db.collection("Customers")
+                const results = await sdk.db.collection("Customers")
                     .where("phone", "==", searchTerm)
                     .limit(10)
                     .get()
@@ -2916,7 +2918,7 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
             };
 
             // Add to Firestore
-            const newCustomerRef = window.sdk.db.collection("Customers").doc();
+            const newCustomerRef = sdk.db.collection("Customers").doc();
             await newCustomerRef.set(customerData);
 
             const customer = {
@@ -2995,7 +2997,7 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
                                                     {customer.orderCount > 0 && (
                                                         <div className="ml-auto text-right">
                                                             <span className="text-sm text-gray-600">{customer.orderCount} orders</span>
-                                                            <p className="text-sm font-medium">{window.UserSession?.getCurrency()}{customer.totalSpent}</p>
+                                                            <p className="text-sm font-medium">{UserSession?.getCurrency()}{customer.totalSpent}</p>
                                                         </div>
                                                     )}
                                                 </div>
@@ -3078,9 +3080,9 @@ function CustomerSearch({ isOpen, onClose, onSelectCustomer }) {
 }
 
 // ProductFormModal updated with consistent layout and slide-in behavior
-function ProductFormModal({ isOpen, onClose, product = null }) {
+export function ProductFormModal({ isOpen, onClose, product = null }) {
     // Add addons state
-    const [formData, setFormData] = React.useState({
+    const [formData, setFormData] = useState({
         id: '',
         title: '',
         desc: '',
@@ -3096,32 +3098,32 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
         addons: [], // Add this line for addons
     });
 
-    const [recipeItems, setRecipeItems] = React.useState([]);
-    const [uploading, setUploading] = React.useState(false);
-    const [error, setError] = React.useState('');
-    const [charges, setCharges] = React.useState([
+    const [recipeItems, setRecipeItems] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [error, setError] = useState('');
+    const [charges, setCharges] = useState([
         { name: 'CGST', value: '2.5%', inclusive: true },
         { name: 'SGST', value: '2.5%', inclusive: true }
     ]);
-    const [categories, setCategories] = React.useState([
+    const [categories, setCategories] = useState([
         'Food', 'Beverages', 'Appetizers', 'Main Course', 'Desserts', 'Snacks'
     ]);
-    const [previewImage, setPreviewImage] = React.useState('');
-    const [showStockManagement, setShowStockManagement] = React.useState(false);
-    const [deleteConfirmed, setDeleteConfirmed] = React.useState(false);
-    const modalRef = React.useRef(null);
+    const [previewImage, setPreviewImage] = useState('');
+    const [showStockManagement, setShowStockManagement] = useState(false);
+    const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+    const modalRef = useRef(null);
 
     // Detect if mobile
-    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    React.useEffect(() => {
+    useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
     // Handle outside click to dismiss
-    React.useEffect(() => {
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (modalRef.current && !modalRef.current.contains(event.target)) {
                 onClose();
@@ -3138,7 +3140,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
     }, [isOpen, onClose]);
 
     // Reset form when modal opens
-    React.useEffect(() => {
+    useEffect(() => {
         if (isOpen) {
             setFormData({
                 id: product?.id || '',
@@ -3157,7 +3159,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             });
 
             setRecipeItems(product?.recipeItems || []);
-            
+
             // If product has charges, use them; otherwise set default GST rates
             if (product?.charges && product.charges.length > 0) {
                 // Convert existing charges to the format expected by the form
@@ -3166,26 +3168,26 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                     value: c.type === 'percentage' ? `${c.value}%` : String(c.value),
                     inclusive: c.inclusive
                 }));
-                
+
                 // Check if we have both CGST and SGST
                 const hasCGST = existingCharges.some(c => c.name === 'CGST');
                 const hasSGST = existingCharges.some(c => c.name === 'SGST');
-                
+
                 if (hasCGST && hasSGST) {
                     // Use existing charges as-is
                     setCharges(existingCharges);
                 } else {
                     // Add standard GST if missing
                     const updatedCharges = [...existingCharges];
-                    
+
                     if (!hasCGST) {
                         updatedCharges.push({ name: 'CGST', value: '2.5%', inclusive: true });
                     }
-                    
+
                     if (!hasSGST) {
                         updatedCharges.push({ name: 'SGST', value: '2.5%', inclusive: true });
                     }
-                    
+
                     setCharges(updatedCharges);
                 }
             } else {
@@ -3210,10 +3212,10 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
     }, [isOpen, product]);
 
     // Fetch categories from existing products
-    React.useEffect(() => {
+    useEffect(() => {
         async function fetchCategories() {
             try {
-                const snapshot = await window.sdk.db.collection("Product").get();
+                const snapshot = await sdk.db.collection("Product").get();
                 // Start with default categories plus popular food categories
                 const cats = new Set([
                     'Appetizers', 'Main Course', 'Breakfast', 'Desserts', 'Beverages',
@@ -3282,10 +3284,10 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                     const filePath = `products/${productId}/${fileName}`;
 
                     // Upload the file to Firebase Storage
-                    await window.sdk.storage.uploadFile(filePath, file);
+                    await sdk.storage.uploadFile(filePath, file);
 
                     // Get the download URL
-                    const imageUrl = await window.sdk.storage.getDownloadURL(filePath);
+                    const imageUrl = await sdk.storage.getDownloadURL(filePath);
 
                     // Update form data with the new image URL
                     setFormData(prev => ({
@@ -3357,7 +3359,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                 if (urlParts) {
                     const path = decodeURIComponent(urlParts.split('?')[0]);
                     try {
-                        await window.sdk.storage.deleteFile(path);
+                        await sdk.storage.deleteFile(path);
                         showToast('Image deleted from storage', 'success');
                     } catch (deleteError) {
                         console.warn('Could not delete image from storage:', deleteError);
@@ -3470,7 +3472,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
 
             // Get current user profile
             try {
-                const profileDoc = await window.sdk.profile.get();
+                const profileDoc = await sdk.profile.get();
                 const userProfile = profileDoc.data();
 
                 if (userProfile) {
@@ -3489,18 +3491,18 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             if (product) {
                 // Update existing product
                 productId = product.id;
-                await window.sdk.db.collection("Product").doc(productId).update(productData);
+                await sdk.db.collection("Product").doc(productId).update(productData);
                 showToast('Product updated successfully');
             } else {
                 // Create new product
-                const docRef = await window.sdk.db.collection("Product").add(productData);
+                const docRef = await sdk.db.collection("Product").add(productData);
                 productId = docRef.id;
                 showToast('Product created successfully');
             }
 
             // Track analytics event
-            if (window.sdk.analytics) {
-                window.sdk.analytics.logEvent(product ? 'product_updated' : 'product_created', {
+            if (sdk.analytics) {
+                sdk.analytics.logEvent(product ? 'product_updated' : 'product_created', {
                     product_id: productId,
                     product_name: productData.title,
                     category: productData.cat
@@ -3511,8 +3513,8 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             onClose();
 
             // Refresh products list if the function exists
-            if (window.refreshProducts && typeof window.refreshProducts === 'function') {
-                window.refreshProducts();
+            if (refreshProducts && typeof refreshProducts === 'function') {
+                refreshProducts();
             }
         } catch (error) {
             console.error('Error saving product:', error);
@@ -3536,7 +3538,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
         }
 
         // Final confirmation
-        if (!window.confirm(`Are you absolutely sure you want to delete "${product.title}"? This action cannot be undone and the product will be permanently removed from your inventory.`)) {
+        if (!confirm(`Are you absolutely sure you want to delete "${product.title}"? This action cannot be undone and the product will be permanently removed from your inventory.`)) {
             return;
         }
 
@@ -3548,12 +3550,12 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             // First delete all product images from storage if they exist
             if (formData.imgs && formData.imgs.length > 0) {
                 try {
-                    const files = await window.sdk.storage.listFiles(`products/${product.id}`);
+                    const files = await sdk.storage.listFiles(`products/${product.id}`);
 
                     // Delete each file
                     for (const item of files.items) {
                         try {
-                            await window.sdk.storage.deleteFile(item.fullPath);
+                            await sdk.storage.deleteFile(item.fullPath);
                             console.log(`Deleted image: ${item.fullPath}`);
                         } catch (deleteError) {
                             console.warn(`Could not delete image: ${item.fullPath}`, deleteError);
@@ -3567,24 +3569,24 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
             }
 
             // Then delete the product document
-            await window.sdk.db.collection("Product").doc(product.id).delete();
+            await sdk.db.collection("Product").doc(product.id).delete();
 
             // Track product deletion with analytics
-            if (window.sdk.analytics) {
-                window.sdk.analytics.logEvent('product_deleted', {
+            if (sdk.analytics) {
+                sdk.analytics.logEvent('product_deleted', {
                     product_id: product.id,
                     product_name: product.title,
                     category: product.category || 'uncategorized'
                 });
             }
 
-            window.showToast('Product deleted successfully');
+            showToast('Product deleted successfully');
             setUploading(false);
             onClose();
 
             // Refresh products list if the function exists
-            if (window.refreshProducts && typeof window.refreshProducts === 'function') {
-                window.refreshProducts();
+            if (refreshProducts && typeof refreshProducts === 'function') {
+                refreshProducts();
             }
         } catch (error) {
             console.error('Error deleting product:', error);
@@ -3812,11 +3814,11 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 {/* MRP */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        MRP ({window.UserSession?.getCurrency()}) <span className="text-red-500">*</span>
+                                        MRP ({UserSession?.getCurrency()}) <span className="text-red-500">*</span>
                                     </label>
                                     <div className="mt-1 relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
+                                            <span className="text-gray-500 sm:text-sm">{UserSession?.getCurrency()}</span>
                                         </div>
                                         <input
                                             type="text"
@@ -3832,11 +3834,11 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 {/* Selling Price */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Selling Price ({window.UserSession?.getCurrency()}) <span className="text-red-500">*</span>
+                                        Selling Price ({UserSession?.getCurrency()}) <span className="text-red-500">*</span>
                                     </label>
                                     <div className="mt-1 relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
+                                            <span className="text-gray-500 sm:text-sm">{UserSession?.getCurrency()}</span>
                                         </div>
                                         <input
                                             type="text"
@@ -3855,9 +3857,9 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 <div className="flex items-center mt-2 text-sm">
                                     <span className="mr-2">Price:</span>
                                     {Number(formData.mrp) > Number(formData.price) && (
-                                        <span className="line-through text-gray-500 mr-2">{window.UserSession?.getCurrency()}{formData.mrp}</span>
+                                        <span className="line-through text-gray-500 mr-2">{UserSession?.getCurrency()}{formData.mrp}</span>
                                     )}
-                                    <span className="font-medium">{window.UserSession?.getCurrency()}{formData.price}</span>
+                                    <span className="font-medium">{UserSession?.getCurrency()}{formData.price}</span>
                                     {Number(formData.mrp) > Number(formData.price) && (
                                         <span className="ml-2 text-green-600">
                                             ({Math.round(((Number(formData.mrp) - Number(formData.price)) / Number(formData.mrp)) * 100)}% OFF)
@@ -3914,7 +3916,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                             <div className="w-24">
                                                 <div className="relative">
                                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <span className="text-gray-500 sm:text-sm">{window.UserSession?.getCurrency()}</span>
+                                                        <span className="text-gray-500 sm:text-sm">{UserSession?.getCurrency()}</span>
                                                     </div>
                                                     <input
                                                         type="number"
@@ -4019,7 +4021,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                         {/* Tax & Charges */}
                         <div className="p-3 bg-gray-50 rounded-lg">
                             <h4 className="text-sm font-medium text-gray-700 mb-3">Tax & Charges</h4>
-                            
+
                             <div className="mb-3 text-xs text-gray-600 p-2 bg-blue-50 rounded-lg">
                                 <p className="font-medium text-blue-700 mb-1">GST Information</p>
                                 <p>• For food items, standard GST is 5% (2.5% CGST + 2.5% SGST)</p>
@@ -4078,7 +4080,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                                     : 'bg-green-100 text-green-600'
                                                     }`}
                                             >
-                                                {String(charge.value).includes('%') ? '%' : window.UserSession?.getCurrency()}
+                                                {String(charge.value).includes('%') ? '%' : UserSession?.getCurrency()}
                                             </button>
                                         </div>
                                         <button
@@ -4126,7 +4128,7 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
                                 >
                                     <i className="ph ph-plus mr-1"></i> Add Custom Charge
                                 </button>
-                                
+
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -4241,16 +4243,16 @@ function ProductFormModal({ isOpen, onClose, product = null }) {
 }
 
 // Recipe Items Component for the Product Form
-function RecipeItems({ items, setItems }) {
-    const [inventoryItems, setInventoryItems] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
+export function RecipeItems({ items, setItems }) {
+    const [inventoryItems, setInventoryItems] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     // Fetch available inventory items when component mounts
-    React.useEffect(() => {
+    useEffect(() => {
         async function fetchInventoryItems() {
             try {
                 setLoading(true);
-                const inventorySnapshot = await window.sdk.db.collection("Inventory")
+                const inventorySnapshot = await sdk.db.collection("Inventory")
                     .orderBy("updatedAt", "desc")
                     .limit(100)
                     .get();
@@ -4460,7 +4462,7 @@ function RecipeItems({ items, setItems }) {
 }
 
 // Price Variants Component for the Product Form
-function PriceVariants({ variants, setVariants }) {
+export function PriceVariants({ variants, setVariants }) {
     // Predefined variation types
     const commonVariations = [
         { name: 'Half', icon: 'ph-circle-half' },
@@ -4568,7 +4570,7 @@ function PriceVariants({ variants, setVariants }) {
                             </div>
                             <div className="w-28">
                                 <div className="flex items-center">
-                                    <span className="p-2 bg-gray-100 border border-gray-300 rounded-l-lg">{window.UserSession?.getCurrency()}</span>
+                                    <span className="p-2 bg-gray-100 border border-gray-300 rounded-l-lg">{UserSession?.getCurrency()}</span>
                                     <input
                                         type="text"
                                         placeholder="Price"
@@ -4613,21 +4615,8 @@ function PriceVariants({ variants, setVariants }) {
     );
 }
 
-// Make component available globally
-window.ProductFormModal = ProductFormModal;
-window.RecipeItems = RecipeItems;
-window.PriceVariants = PriceVariants;
-
-// Export components
-window.ProfileMenu = ProfileMenu;
-window.AddTableModal = AddTableModal;
-window.RenameRoomModal = RenameRoomModal;
-window.OrderRoom = OrderRoom;
-window.OrderView = OrderView;
-window.CustomerSearch = CustomerSearch;
-
 // Context Menu Component
-function ContextMenu() {
+export function ContextMenu() {
     return (
         <div className="relative" ref={menuRef}>
             <button
@@ -4641,7 +4630,7 @@ function ContextMenu() {
     );
 }
 
-const renderContextMenu = () => {
+export const renderContextMenu = () => {
     return (
         <div
             ref={menuRef}
@@ -4703,6 +4692,3 @@ const renderContextMenu = () => {
         </div>
     );
 };
-
-// ... existing code ...
-// ... existing code ...

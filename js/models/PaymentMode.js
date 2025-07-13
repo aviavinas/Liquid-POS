@@ -30,6 +30,3 @@ const PaymentMode = {
         }
     }
 };
-
-// Export the PaymentMode enum
-window.PaymentMode = PaymentMode; 

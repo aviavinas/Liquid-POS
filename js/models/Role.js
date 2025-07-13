@@ -1,5 +1,5 @@
 // Role model for user permissions
-class Role {
+export class Role {
     constructor(data = {}) {
         this.id = data.id || '';
         this.name = data.name || '';
@@ -36,7 +36,7 @@ class Role {
 }
 
 // Permission model
-class Permission {
+export class Permission {
     constructor(data = {}) {
         this.module = data.module || '';
         this.actions = data.actions || [];
@@ -58,7 +58,3 @@ class Permission {
         };
     }
 }
-
-// Make classes available globally
-window.Role = Role;
-window.Permission = Permission; 

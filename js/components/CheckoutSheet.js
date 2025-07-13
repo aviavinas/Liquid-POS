@@ -1,44 +1,44 @@
 // CheckoutSheet component for handling order checkout
 function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceVariant, onClose }) {
-    const [discount, setDiscount] = React.useState(0);
-    const [instructions, setInstructions] = React.useState('');
-    const [showDiscountModal, setShowDiscountModal] = React.useState(false);
-    const [percentMode, setPercentMode] = React.useState(false);
-    const [discountInput, setDiscountInput] = React.useState('');
-    const [isProcessing, setIsProcessing] = React.useState(false);
-    const [paymentMode, setPaymentMode] = React.useState('CASH'); // CASH, DIGITAL, CREDIT
-    const [showInstructionsModal, setShowInstructionsModal] = React.useState(false);
-    const [customer, setCustomer] = React.useState(null);
-    const [showCustomerModal, setShowCustomerModal] = React.useState(false);
-    const [customerSearch, setCustomerSearch] = React.useState('');
-    const [customersList, setCustomersList] = React.useState([]);
-    const [isLoadingCustomers, setIsLoadingCustomers] = React.useState(false);
-    const [customersError, setCustomersError] = React.useState(null);
+    const [discount, setDiscount] = useState(0);
+    const [instructions, setInstructions] = useState('');
+    const [showDiscountModal, setShowDiscountModal] = useState(false);
+    const [percentMode, setPercentMode] = useState(false);
+    const [discountInput, setDiscountInput] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentMode, setPaymentMode] = useState('CASH'); // CASH, DIGITAL, CREDIT
+    const [showInstructionsModal, setShowInstructionsModal] = useState(false);
+    const [customer, setCustomer] = useState(null);
+    const [showCustomerModal, setShowCustomerModal] = useState(false);
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [customersList, setCustomersList] = useState([]);
+    const [isLoadingCustomers, setIsLoadingCustomers] = useState(false);
+    const [customersError, setCustomersError] = useState(null);
     // Add state for auto print preference
-    const [autoPrint, setAutoPrint] = React.useState(() => {
+    const [autoPrint, setAutoPrint] = useState(() => {
         return localStorage.getItem('autoPrintPreference') === 'true';
     });
     // Add state for bill image generation
-    const [isGeneratingBill, setIsGeneratingBill] = React.useState(false);
-    const [billImageUrl, setBillImageUrl] = React.useState(null);
+    const [isGeneratingBill, setIsGeneratingBill] = useState(false);
+    const [billImageUrl, setBillImageUrl] = useState(null);
 
     // Calculate cart totals
-    const cartSubTotal = React.useMemo(() => {
+    const cartSubTotal = useMemo(() => {
         if (!cart) return 0;
         return Object.values(cart).reduce((total, item) => {
             // Base price from variant or product
             const basePrice = item.variant ? item.variant.price : item.product.price;
-            
+
             // Add add-ons prices
             const addonsTotal = item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) : 0;
-            
+
             // Calculate total for this item including quantity
             return total + ((basePrice + addonsTotal) * item.quantity);
         }, 0);
     }, [cart]);
 
     // Calculate charges (taxes, etc.)
-    const chargesCalculation = React.useMemo(() => {
+    const chargesCalculation = useMemo(() => {
         if (!cart) return { calculatedCharges: [], totalChargesAmount: 0, finalAmount: 0 };
 
         // Collect all product charges
@@ -89,8 +89,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         }
 
         // Use ChargesCalculator to calculate final amounts
-        return window.ChargesCalculator && typeof window.ChargesCalculator.calculateCharges === 'function'
-            ? window.ChargesCalculator.calculateCharges(cartSubTotal, consolidatedCharges, discount)
+        return ChargesCalculator && typeof ChargesCalculator.calculateCharges === 'function'
+            ? ChargesCalculator.calculateCharges(cartSubTotal, consolidatedCharges, discount)
             : {
                 calculatedCharges: [],
                 finalAmount: cartSubTotal - (discount || 0)
@@ -137,7 +137,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
         try {
             // Simple query similar to the Flutter implementation
-            const customersRef = window.sdk.db.collection("Customers");
+            const customersRef = sdk.db.collection("Customers");
 
             // Basic query without compound indexing requirements or sellerId filter (handled by SDK)
             let snapshot = await customersRef.get();
@@ -178,7 +178,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     };
 
     // Debounced search for better performance
-    const debouncedSearchCustomers = React.useCallback(
+    const debouncedSearchCustomers = useCallback(
         (() => {
             let timeoutId = null;
             return (query) => {
@@ -198,7 +198,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         setCustomerSearch('');
         setCustomersList([]);
 
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
             const customerModalContent = `
                 <div class="mb-5">
                     <!-- Search input -->
@@ -336,7 +336,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         try {
             // Create simple query to get customers, avoiding complex indexing
             // No need for sellerId filter as it's handled by the SDK
-            let customersRef = window.sdk.db.collection("Customers");
+            let customersRef = sdk.db.collection("Customers");
             let snapshot = await customersRef.get();
 
             // Process results
@@ -382,7 +382,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
     };
 
     // Load auto print preference from localStorage during component initialization
-    React.useEffect(() => {
+    useEffect(() => {
         const savedPreference = localStorage.getItem('autoPrintPreference');
         if (savedPreference !== null) {
             setAutoPrint(savedPreference === 'true');
@@ -423,15 +423,15 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             setIsProcessing(true);
 
             // Ensure orderId exists or create a new one
-            const targetOrderId = orderId || window.sdk.db.collection("Orders").doc().id;
-            const orderRef = window.sdk.db.collection("Orders").doc(targetOrderId);
+            const targetOrderId = orderId || sdk.db.collection("Orders").doc().id;
+            const orderRef = sdk.db.collection("Orders").doc(targetOrderId);
 
             // Convert cart items to Order items format
             const items = Object.values(cart).map(cartItem => {
                 let finalItemData;
                 try {
                     // Attempt to use the SDK's Item.fromProduct
-                    const sdkItem = window.Item.fromProduct(cartItem.product, cartItem.quantity);
+                    const sdkItem = Item.fromProduct(cartItem.product, cartItem.quantity);
                     finalItemData = sdkItem.data || {}; // Use .data if it exists, otherwise an empty object
 
                     // Regardless of what Item.fromProduct does, explicitly set/override price and details
@@ -532,7 +532,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
             try {
                 // Try using MOrder.fromItems first
-                const order = window.MOrder.fromItems(
+                const order = MOrder.fromItems(
                     targetOrderId,
                     items,
                     discount,
@@ -562,7 +562,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
                 // Fallback for direct data creation
                 const now = new Date();
-                const seller = window.UserSession?.seller;
+                const seller = UserSession?.seller;
                 const billNo = seller?.getBillNo ? seller.getBillNo() : Math.floor(Math.random() * 1000000);
 
                 orderData = {
@@ -690,20 +690,20 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 // After checkout is complete, handle bill printing with centralized method
                 let billPrintedSuccessfully = false;
 
-                if (window.BluetoothPrinting && autoPrint) {
+                if (BluetoothPrinting && autoPrint) {
                     try {
                         // Use centralized print method that handles all scenarios internally
-                        billPrintedSuccessfully = await window.BluetoothPrinting.printBill(targetOrderId, mode, autoPrint);
+                        billPrintedSuccessfully = await BluetoothPrinting.printBill(targetOrderId, mode, autoPrint);
                     } catch (error) {
                         console.error("Error calling print bill:", error);
                         // We continue even if printing fails
                     }
-                } else if (window.BluetoothPrinting && window.UserSession?.seller?.billEnabled !== false) {
+                } else if (BluetoothPrinting && UserSession?.seller?.billEnabled !== false) {
                     // Only show the print dialog if printing is enabled and auto-print is off
                     try {
                         // Ask if user wants to print now
-                        if (window.ModalManager && typeof window.ModalManager.createDialog === 'function') {
-                            window.ModalManager.createDialog({
+                        if (ModalManager && typeof ModalManager.createDialog === 'function') {
+                            ModalManager.createDialog({
                                 title: "Print Bill?",
                                 content: `
                                     <div class="mb-4">
@@ -724,7 +724,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         primary: true,
                                         action: async () => {
                                             try {
-                                                await window.BluetoothPrinting.printBill(targetOrderId, mode, false);
+                                                await BluetoothPrinting.printBill(targetOrderId, mode, false);
                                             } catch (printError) {
                                                 console.error("Error printing bill:", printError);
                                                 showToast("Failed to print bill: " + (printError.message || "Unknown error"), "error");
@@ -738,17 +738,17 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         console.error("Error showing print dialog:", error);
                         // Continue even if showing the dialog fails
                     }
-                } else if (window.UserSession?.seller?.billEnabled !== false) {
+                } else if (UserSession?.seller?.billEnabled !== false) {
                     // If BluetoothPrinting is not available but billing is enabled, show a message
                     showToast("Printing service not available, but order completed successfully", "info");
                 }
 
                 // Ask the user if they'd like to enable auto-print
                 // but only ask if this preference isn't set yet and if printing is available
-                if (billPrintedSuccessfully && localStorage.getItem('autoPrintPreference') === null && window.BluetoothPrinting) {
+                if (billPrintedSuccessfully && localStorage.getItem('autoPrintPreference') === null && BluetoothPrinting) {
                     setTimeout(() => {
-                        if (window.ModalManager && typeof window.ModalManager.createDialog === 'function') {
-                            window.ModalManager.createDialog({
+                        if (ModalManager && typeof ModalManager.createDialog === 'function') {
+                            ModalManager.createDialog({
                                 title: "Enable Auto Print?",
                                 content: `
                                     <div class="mb-4">
@@ -795,8 +795,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         }
 
         if (isNaN(amount) || amount < 0) {
-            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                window.ModalManager.showToast("Please enter a valid discount amount", { type: "error" });
+            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                ModalManager.showToast("Please enter a valid discount amount", { type: "error" });
             } else {
                 showToast("Please enter a valid discount amount", "error");
             }
@@ -804,18 +804,18 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
         }
 
         if (amount > cartSubTotal) {
-            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                window.ModalManager.showToast("Discount cannot be greater than subtotal", { type: "error" });
+            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                ModalManager.showToast("Discount cannot be greater than subtotal", { type: "error" });
             } else {
                 showToast("Discount cannot be greater than subtotal", "error");
             }
             setDiscount(0);
         } else {
             setDiscount(amount);
-            if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-                window.ModalManager.showToast(`Discount of ${window.UserSession?.getCurrency()}${amount.toFixed(2)} applied`, { type: "success" });
+            if (ModalManager && typeof ModalManager.showToast === 'function') {
+                ModalManager.showToast(`Discount of ${UserSession?.getCurrency()}${amount.toFixed(2)} applied`, { type: "success" });
             } else {
-                showToast(`Discount of ${window.UserSession?.getCurrency()}${amount.toFixed(2)} applied`, "success");
+                showToast(`Discount of ${UserSession?.getCurrency()}${amount.toFixed(2)} applied`, "success");
             }
         }
         setShowDiscountModal(false);
@@ -823,7 +823,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
     // Open discount modal
     const openDiscountModal = () => {
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
             // Reset discount input when opening
             setDiscountInput('');
 
@@ -846,7 +846,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         </label>
                         <div class="flex items-center border rounded-lg overflow-hidden shadow-sm">
                             <span class="px-3 py-2 bg-gray-100 text-gray-500">
-                                ${percentMode ? '%' : window.UserSession?.getCurrency()}
+                                ${percentMode ? '%' : UserSession?.getCurrency()}
                             </span>
                             <input
                                 type="number"
@@ -859,7 +859,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <p class="text-xs text-gray-500 mt-2">
                             ${percentMode
                     ? 'Enter percentage between 1-100'
-                    : `Maximum discount: ${window.UserSession?.getCurrency()}${cartSubTotal}`}
+                    : `Maximum discount: ${UserSession?.getCurrency()}${cartSubTotal}`}
                         </p>
                     </div>
 
@@ -867,12 +867,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     <div class="bg-gray-50 rounded-lg p-4 mb-5">
                         <div className="flex justify-between mb-1">
                             <span className="text-gray-600">Subtotal:</span>
-                            <span>${window.UserSession?.getCurrency()}${cartSubTotal}</span>
+                            <span>${UserSession?.getCurrency()}${cartSubTotal}</span>
                         </div>
                         <div className="flex justify-between mb-1 text-green-600">
                             <span>Discount:</span>
                             <span id="discount-amount">
-                                - ${window.UserSession?.getCurrency()}${percentMode
+                                - ${UserSession?.getCurrency()}${percentMode
                     ? ((parseFloat(discountInput) || 0) * cartSubTotal / 100).toFixed(2)
                     : (Math.min(parseFloat(discountInput) || 0, cartSubTotal)).toFixed(2)
                 }
@@ -881,7 +881,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <div className="flex justify-between font-medium text-lg pt-2 border-t">
                             <span>Final Total:</span>
                             <span id="final-total">
-                                {window.UserSession?.getCurrency()}${percentMode
+                                {UserSession?.getCurrency()}${percentMode
                     ? (cartSubTotal - ((parseFloat(discountInput) || 0) * cartSubTotal / 100)).toFixed(2)
                     : (cartSubTotal - Math.min(parseFloat(discountInput) || 0, cartSubTotal)).toFixed(2)
                 }
@@ -902,7 +902,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManager.createCenterModal({
                 id: 'discount-modal',
                 title: 'Apply Discount',
                 content: discountModalContent,
@@ -947,8 +947,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     ? ((parseFloat(newValue) || 0) * cartSubTotal / 100)
                                     : Math.min(parseFloat(newValue) || 0, cartSubTotal);
 
-                                discountAmount.textContent = `- ${window.UserSession?.getCurrency()}${calculatedDiscount.toFixed(2)}`;
-                                finalTotal.textContent = `${window.UserSession?.getCurrency()}${(cartSubTotal - calculatedDiscount).toFixed(2)}`;
+                                discountAmount.textContent = `- ${UserSession?.getCurrency()}${calculatedDiscount.toFixed(2)}`;
+                                finalTotal.textContent = `${UserSession?.getCurrency()}${(cartSubTotal - calculatedDiscount).toFixed(2)}`;
                             }
                         });
                     }
@@ -973,7 +973,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
     // Open instructions modal
     const openInstructionsModal = () => {
-        if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+        if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
             const instructionsContent = `
                 <div class="mb-5">
                     <textarea
@@ -995,7 +995,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 </div>
             `;
 
-            const modal = window.ModalManager.createCenterModal({
+            const modal = ModalManager.createCenterModal({
                 id: 'instructions-modal',
                 title: 'Order Instructions',
                 content: instructionsContent,
@@ -1014,8 +1014,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         saveBtn.addEventListener('click', () => {
                             if (instructionsTextarea) {
                                 setInstructions(instructionsTextarea.value);
-                                if (window.ModalManager.showToast) {
-                                    window.ModalManager.showToast("Instructions saved");
+                                if (ModalManager.showToast) {
+                                    ModalManager.showToast("Instructions saved");
                                 }
                             }
                             modalControl.close();
@@ -1039,7 +1039,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
         try {
             // Get order data
-            const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
+            const orderData = await BluetoothPrinting?.getOrderData(orderId);
             if (!orderData) {
                 showToast("Order not found", "error");
                 setIsGeneratingBill(false);
@@ -1047,7 +1047,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             }
 
             // Get seller information
-            const seller = window.UserSession?.seller || {};
+            const seller = UserSession?.seller || {};
 
             // Check if we have a custom template
             const hasCustomTemplate = seller.printTemplate &&
@@ -1059,7 +1059,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const templateData = hasCustomTemplate ? seller.printTemplate.bill : null;
 
             // Generate HTML using PrintTemplate
-            const template = new window.BluetoothPrinting.PrintTemplate({
+            const template = new BluetoothPrinting.PrintTemplate({
                 type: 'bill',
                 orderData: orderData,
                 seller: seller,
@@ -1111,14 +1111,14 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             const height = receiptContent.offsetHeight || 500;
 
             // Ensure modernScreenshot is available
-            if (!window.modernScreenshot) {
+            if (!modernScreenshot) {
                 throw new Error("Modern Screenshot library not available");
             }
 
             // Capture the receipt content as PNG with error handling
             let pngDataUrl;
             try {
-                pngDataUrl = await window.modernScreenshot.domToPng(receiptContent, {
+                pngDataUrl = await modernScreenshot.domToPng(receiptContent, {
                     width: width,
                     height: height,
                     backgroundColor: '#FFFFFF',
@@ -1201,12 +1201,12 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
             console.log("Bill image available, proceeding with WhatsApp sharing");
 
             // Get order details for a more descriptive message
-            const orderData = await window.BluetoothPrinting?.getOrderData(orderId);
+            const orderData = await BluetoothPrinting?.getOrderData(orderId);
             const billNo = orderData?.billNo || orderId || '';
             const total = orderData?.total || cartTotal || 0;
 
             // Create a more descriptive message
-            const text = `Here is your bill #${billNo} from ${window.UserSession?.seller?.name || 'us'}.\nTotal: ${window.UserSession?.getCurrency()}${total.toFixed(2)}\nThank you for your business!`;
+            const text = `Here is your bill #${billNo} from ${UserSession?.seller?.name || 'us'}.\nTotal: ${UserSession?.getCurrency()}${total.toFixed(2)}\nThank you for your business!`;
 
             // Validate imageData before proceeding
             if (!imageData || typeof imageData !== 'string' || !imageData.startsWith('data:')) {
@@ -1251,7 +1251,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                 !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
             // If Web Share API is not available or failed, show a modal with options
-            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
                 // Save the bill image first for easy access
                 const downloadLink = document.createElement('a');
                 downloadLink.href = imageData; // Use our local imageData variable instead of billImageUrl
@@ -1343,7 +1343,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                     </div>
                 `;
 
-                window.ModalManager.createCenterModal({
+                ModalManager.createCenterModal({
                     title: 'Share Bill via WhatsApp',
                     content: modalContent,
                     onShown: (modalControl) => {
@@ -1605,7 +1605,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
         try {
             const customerPhone = customer?.phone || '';
-            const text = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}`;
+            const text = `Here is your bill from ${UserSession?.seller?.name || 'us'}`;
 
             // Use native SMS app through URL scheme
             const smsUrl = `sms:${customerPhone}?body=${encodeURIComponent(text)}`;
@@ -1649,8 +1649,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
 
         try {
             const customerEmail = customer?.email || '';
-            const subject = `Your Bill from ${window.UserSession?.seller?.name || 'Restaurant'}`;
-            const body = `Here is your bill from ${window.UserSession?.seller?.name || 'us'}. Thank you for your business!`;
+            const subject = `Your Bill from ${UserSession?.seller?.name || 'Restaurant'}`;
+            const body = `Here is your bill from ${UserSession?.seller?.name || 'us'}. Thank you for your business!`;
 
             // Primary approach: Use mailto link for web email
             const mailtoUrl = `mailto:${customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -1824,10 +1824,10 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         )}
 
                                         <div className="text-sm text-gray-600 mt-0.5">
-                                            {item.quantity} × ${window.UserSession?.getCurrency()}{item.variant ? item.variant.price : item.product.price}
+                                            {item.quantity} × ${UserSession?.getCurrency()}{item.variant ? item.variant.price : item.product.price}
                                             {item.addons && item.addons.length > 0 && (
                                                 <span className="text-gray-500">
-                                                    {' '}(+${window.UserSession?.getCurrency()}{item.addons.reduce((sum, addon) => sum + addon.price, 0)} add-ons)
+                                                    {' '}(+${UserSession?.getCurrency()}{item.addons.reduce((sum, addon) => sum + addon.price, 0)} add-ons)
                                                 </span>
                                             )}
                                         </div>
@@ -1841,7 +1841,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         )}
                                     </div>
                                     <div className="font-medium text-right whitespace-nowrap text-red-600">
-                                        {window.UserSession?.getCurrency()}{((item.variant ? item.variant.price : item.product.price) * item.quantity +
+                                        {UserSession?.getCurrency()}{((item.variant ? item.variant.price : item.product.price) * item.quantity +
                                             (item.addons ? item.addons.reduce((sum, addon) => sum + addon.price, 0) * item.quantity : 0)).toFixed(2)}
                                     </div>
                                 </div>
@@ -1869,7 +1869,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <span className="text-gray-600">Sub Total</span>
-                                <span>{window.UserSession?.getCurrency()}{cartSubTotal.toFixed(2)}</span>
+                                <span>{UserSession?.getCurrency()}{cartSubTotal.toFixed(2)}</span>
                             </div>
 
                             {/* Charges */}
@@ -1879,7 +1879,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                     <div className="text-right">
                                         {calculatedCharges.map((charge, index) => (
                                             <div key={index}>
-                                                {charge.displayName}: {window.UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}
+                                                {charge.displayName}: {UserSession?.getCurrency()}{charge.calculatedAmount.toFixed(2)}
                                             </div>
                                         ))}
                                         {calculatedCharges.some(charge => charge.bulkTaxHashtag) && (
@@ -1894,13 +1894,13 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                             {discount > 0 && (
                                 <div className="flex justify-between text-green-600">
                                     <span>Discount</span>
-                                    <span>- {window.UserSession?.getCurrency()}{discount.toFixed(2)}</span>
+                                    <span>- {UserSession?.getCurrency()}{discount.toFixed(2)}</span>
                                 </div>
                             )}
 
                             <div className="border-t border-gray-200 pt-2 flex justify-between mt-2">
                                 <span className="font-medium">Grand Total</span>
-                                <span className="font-semibold text-red-600">{window.UserSession?.getCurrency()}{(cartSubTotal - discount).toFixed(2)}</span>
+                                <span className="font-semibold text-red-600">{UserSession?.getCurrency()}{(cartSubTotal - discount).toFixed(2)}</span>
                             </div>
                         </div>
 
@@ -1929,7 +1929,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                             {typeof customer.balance === 'number' && customer.balance < 0 && (
                                                 <div className="text-sm text-red-600 font-medium mt-1 flex items-center">
                                                     <i className="ph ph-currency-circle-dollar text-xs mr-1.5"></i>
-                                                    Previous Due: {window.UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}
+                                                    Previous Due: {UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}
                                                 </div>
                                             )}
                                         </div>
@@ -2029,8 +2029,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                         const phoneInput = document.getElementById('quick-customer-phone');
 
                                                         if (!nameInput.value.trim()) {
-                                                            if (window.ModalManager && window.ModalManager.showToast) {
-                                                                window.ModalManager.showToast("Customer name is required", { type: "error" });
+                                                            if (ModalManager && ModalManager.showToast) {
+                                                                ModalManager.showToast("Customer name is required", { type: "error" });
                                                             } else {
                                                                 showToast("Customer name is required", "error");
                                                             }
@@ -2045,11 +2045,11 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                             balance: 0,
                                                             createdAt: new Date(),
                                                             lastPurchase: new Date(),
-                                                            sellerId: window.UserSession?.seller?.id
+                                                            sellerId: UserSession?.seller?.id
                                                         };
 
                                                         // Add to Firestore
-                                                        window.sdk.db.collection("Customers").add(newCustomer)
+                                                        sdk.db.collection("Customers").add(newCustomer)
                                                             .then(docRef => {
                                                                 // Set as selected customer
                                                                 setCustomer({
@@ -2057,8 +2057,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                                     id: docRef.id
                                                                 });
 
-                                                                if (window.ModalManager && window.ModalManager.showToast) {
-                                                                    window.ModalManager.showToast("New customer added", { type: "success" });
+                                                                if (ModalManager && ModalManager.showToast) {
+                                                                    ModalManager.showToast("New customer added", { type: "success" });
                                                                 } else {
                                                                     showToast("New customer added", "success");
                                                                 }
@@ -2068,8 +2068,8 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                             })
                                                             .catch(error => {
                                                                 console.error("Error adding customer:", error);
-                                                                if (window.ModalManager && window.ModalManager.showToast) {
-                                                                    window.ModalManager.showToast("Failed to add customer", { type: "error" });
+                                                                if (ModalManager && ModalManager.showToast) {
+                                                                    ModalManager.showToast("Failed to add customer", { type: "error" });
                                                                 } else {
                                                                     showToast("Failed to add customer", "error");
                                                                 }
@@ -2119,7 +2119,7 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                                                         )}
                                                                     </div>
                                                                     {cust.balance < 0 && (
-                                                                        <div className="text-xs text-red-500">{window.UserSession?.getCurrency()}{Math.abs(cust.balance).toFixed(2)} due</div>
+                                                                        <div className="text-xs text-red-500">{UserSession?.getCurrency()}{Math.abs(cust.balance).toFixed(2)} due</div>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -2198,16 +2198,16 @@ function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceV
                                         {customer.balance < 0 ? (
                                             <>
                                                 <span className="text-gray-700 font-medium">Current Due: </span>
-                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{UserSession?.getCurrency()}{Math.abs(customer.balance).toFixed(2)}</span>
                                                 <span className="mx-1">+</span>
-                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
                                                 <span className="mx-1">=</span>
-                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{(Math.abs(customer.balance) + cartTotal).toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{UserSession?.getCurrency()}{(Math.abs(customer.balance) + cartTotal).toFixed(2)}</span>
                                             </>
                                         ) : (
                                             <>
                                                 <span className="text-gray-700 font-medium">New Due: </span>
-                                                <span className="text-red-600 font-medium">{window.UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
+                                                <span className="text-red-600 font-medium">{UserSession?.getCurrency()}{cartTotal.toFixed(2)}</span>
                                             </>
                                         )}
                                     </div>
@@ -2281,7 +2281,7 @@ CheckoutSheet.createWithModalManager = function (options) {
     const { cart, clearCallback, tableId, checkout, orderId, priceVariant, onClose } = options;
 
     // If ModalManager doesn't exist or createSideDrawerModal isn't available, fallback to React rendering
-    if (!window.ModalManager || typeof window.ModalManager.createSideDrawerModal !== 'function') {
+    if (!ModalManager || typeof ModalManager.createSideDrawerModal !== 'function') {
         console.warn("ModalManager not available, using fallback rendering");
         return null; // Let the caller handle the fallback
     }
@@ -2321,6 +2321,3 @@ CheckoutSheet.createWithModalManager = function (options) {
         }
     };
 };
-
-// Make component available globally
-window.CheckoutSheet = CheckoutSheet; 

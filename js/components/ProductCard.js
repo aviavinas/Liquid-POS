@@ -1,17 +1,20 @@
+import React, { useContext } from 'react';
+import { ProfileContext } from '../contexts/ProfileContext.js';
+
 // Product Card Component
-function ProductCard({ product }) {
+export default function ProductCard({ product }) {
     // Function to handle product deletion
     const handleDelete = (e) => {
         e.stopPropagation();
         if (!confirm(`Are you sure you want to delete "${product.title}"?`)) return;
 
         try {
-            window.sdk.db.collection("Product").doc(product.id).delete()
+            sdk.db.collection("Product").doc(product.id).delete()
                 .then(() => {
                     showToast("Product deleted successfully");
                     // Trigger a re-fetch instead of reloading the page
-                    if (window.refreshProducts && typeof window.refreshProducts === 'function') {
-                        window.refreshProducts();
+                    if (refreshProducts && typeof refreshProducts === 'function') {
+                        refreshProducts();
                     }
                 })
                 .catch(error => {
@@ -30,14 +33,14 @@ function ProductCard({ product }) {
         const newActiveState = !product.active;
 
         try {
-            window.sdk.db.collection("Product").doc(product.id).update({
+            sdk.db.collection("Product").doc(product.id).update({
                 active: newActiveState
             })
                 .then(() => {
                     showToast(`Product ${newActiveState ? 'activated' : 'deactivated'} successfully`);
                     // Trigger a re-fetch instead of reloading the page
-                    if (window.refreshProducts && typeof window.refreshProducts === 'function') {
-                        window.refreshProducts();
+                    if (refreshProducts && typeof refreshProducts === 'function') {
+                        refreshProducts();
                     }
                 })
                 .catch(error => {
@@ -62,13 +65,13 @@ function ProductCard({ product }) {
 
         // Render the ProductFormModal inside the container
         ReactDOM.render(
-            React.createElement(window.ProductFormModal, {
+            createElement(ProductFormModal, {
                 isOpen: true,
                 onClose: () => {
                     ReactDOM.unmountComponentAtNode(modalContainer);
                     // Refresh products data after modal is closed
-                    if (window.refreshProducts && typeof window.refreshProducts === 'function') {
-                        window.refreshProducts();
+                    if (refreshProducts && typeof refreshProducts === 'function') {
+                        refreshProducts();
                     }
                 },
                 product: product
@@ -155,9 +158,9 @@ function ProductCard({ product }) {
                 {/* Price Row */}
                 <div className="flex items-center justify-between mt-1.5">
                     <div className="flex items-baseline gap-1">
-                        <div className="font-semibold text-gray-800">{window.UserSession?.getCurrency()}{product.price}</div>
+                        <div className="font-semibold text-gray-800">{UserSession?.getCurrency()}{product.price}</div>
                         {product.mrp > product.price && (
-                            <div className="text-2xs line-through text-gray-400">{window.UserSession?.getCurrency()}{product.mrp}</div>
+                            <div className="text-2xs line-through text-gray-400">{UserSession?.getCurrency()}{product.mrp}</div>
                         )}
                     </div>
 
@@ -172,6 +175,3 @@ function ProductCard({ product }) {
         </div>
     );
 }
-
-// Make components available globally
-window.ProductCard = ProductCard; 

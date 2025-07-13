@@ -1,21 +1,22 @@
-// POS (Point of Sale) component for product selection and cart management
-const React = window.React;
-const ReactDOM = window.ReactDOM;
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { showToast } from '../utils/toast.js';
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
 
-function POS({ title, tableId, order, variant, checkout = false, includeAllProducts = true, onClose }) {
-    const [cart, setCart] = React.useState({});
-    const [products, setProducts] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [selectedCategory, setSelectedCategory] = React.useState('all');
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [showSearchPanel, setShowSearchPanel] = React.useState(false);
-    const [showRawItemPanel, setShowRawItemPanel] = React.useState(false);
-    const [isClosing, setIsClosing] = React.useState(false);
-    const dialogRef = React.useRef(null);
-    const [isMobile, setIsMobile] = React.useState(window.innerWidth < 768);
+export function POS({ title, tableId, order, variant, checkout = false, includeAllProducts = true, onClose }) {
+    const [cart, setCart] = useState({});
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearchPanel, setShowSearchPanel] = useState(false);
+    const [showRawItemPanel, setShowRawItemPanel] = useState(false);
+    const [isClosing, setIsClosing] = useState(false);
+    const dialogRef = useRef(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     // Check for mobile/desktop on resize
-    React.useEffect(() => {
+    useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth < 768);
         };
@@ -27,7 +28,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
     }, []);
 
     // Load products
-    React.useEffect(() => {
+    useEffect(() => {
         loadProducts();
     }, []);
 
@@ -35,32 +36,32 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
     const loadProducts = async () => {
         try {
             console.log("Loading products for order:", order?.id, "includeAllProducts:", includeAllProducts);
-            const snapshot = await window.sdk.db.collection("Product").get();
+            const snapshot = await sdk.db.collection("Product").get();
             let allProducts = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
 
             console.log("Total products before filtering:", allProducts.length);
-            
+
             // Only filter out existing products if includeAllProducts is false
             if (!includeAllProducts && order && order.items && Array.isArray(order.items)) {
                 const existingProductIds = order.items.map(item => item.pid);
                 console.log("Existing product IDs in order:", existingProductIds);
-                
+
                 // Filter out products that are already in the order
                 const productsBeforeFilter = allProducts.length;
                 allProducts = allProducts.filter(product =>
                     !existingProductIds.includes(product.id)
                 );
                 console.log(`Filtered out ${productsBeforeFilter - allProducts.length} existing products`);
-                
+
                 // Log the products that were filtered out
                 const filteredOut = productsBeforeFilter - allProducts.length;
                 if (filteredOut > 0) {
-                    console.log("Products filtered out:", 
+                    console.log("Products filtered out:",
                         snapshot.docs
-                            .map(doc => ({id: doc.id, ...doc.data()}))
+                            .map(doc => ({ id: doc.id, ...doc.data() }))
                             .filter(p => existingProductIds.includes(p.id))
                             .map(p => p.title)
                     );
@@ -85,57 +86,57 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
     };
 
     // Filter products based on category and search
-    const filteredProducts = React.useMemo(() => {
+    const filteredProducts = useMemo(() => {
         console.log("Filtering products. Total products:", products.length);
         console.log("Search query:", searchQuery);
         console.log("Selected category:", selectedCategory);
-        
+
         // Specifically check for Fruit Salad in the products array
-        const fruitSaladProducts = products.filter(p => 
+        const fruitSaladProducts = products.filter(p =>
             p.title.toLowerCase().includes('fruit salad')
         );
         console.log("Products with 'fruit salad' in title:", fruitSaladProducts.map(p => p.title));
-        
+
         // Check if we have any products with "fruit" in the title
         if (searchQuery.toLowerCase().includes('fruit')) {
-            const fruitProducts = products.filter(p => 
+            const fruitProducts = products.filter(p =>
                 p.title.toLowerCase().includes('fruit')
             );
             console.log("Products with 'fruit' in title:", fruitProducts.map(p => p.title));
-            
+
             // If no fruit products found in the current products array
             if (fruitProducts.length === 0) {
                 console.error("No fruit products found in the current products array. This might indicate filtering issues.");
-                
+
                 // Check if there might be fruit products in the order that were filtered out
                 if (order && order.items && Array.isArray(order.items)) {
-                    const fruitItemsInOrder = order.items.filter(item => 
+                    const fruitItemsInOrder = order.items.filter(item =>
                         item.title.toLowerCase().includes('fruit')
                     );
                     console.log("Fruit items already in order:", fruitItemsInOrder.map(i => i.title));
                 }
             }
         }
-        
+
         const filtered = products.filter(product => {
             const matchesCategory = selectedCategory === 'all' || product.cat === selectedCategory;
             const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase());
             return matchesCategory && matchesSearch;
         });
-        
+
         console.log("Filtered products count:", filtered.length);
-        
+
         // If we're searching for something but got no results, provide more debug info
         if (searchQuery && filtered.length === 0) {
             console.error(`No products found matching "${searchQuery}". This might be due to filtering issues.`);
             console.log("All product titles for reference:", products.map(p => p.title));
         }
-        
+
         return filtered;
     }, [products, selectedCategory, searchQuery]);
 
     // Get unique categories
-    const categories = React.useMemo(() => {
+    const categories = useMemo(() => {
         const uniqueCategories = new Set(products.map(p => p.cat));
         return ['all', ...Array.from(uniqueCategories)];
     }, [products]);
@@ -271,7 +272,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
 
         try {
             const now = new Date();
-            const orderId = order?.id || window.sdk.db.collection("Orders").doc().id;
+            const orderId = order?.id || sdk.db.collection("Orders").doc().id;
 
             // Convert cart to order items
             const items = Object.values(cart).map(cartItem => {
@@ -362,7 +363,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                     }
                 } else {
                     // Fallback if no ref is provided
-                    const existingItems = await window.sdk.db.collection("Orders").doc(orderId).get()
+                    const existingItems = await sdk.db.collection("Orders").doc(orderId).get()
                         .then(doc => doc.exists ? doc.data().items : []);
 
                     // Create a map of existing items by product ID
@@ -404,11 +405,11 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
             // Create or update order in Firestore
             const orderData = {
                 id: orderId,
-                billNo: window.UserSession?.seller?.getBillNo ?
-                    window.UserSession.seller.getBillNo() :
+                billNo: UserSession?.seller?.getBillNo ?
+                    UserSession.seller.getBillNo() :
                     Math.floor(Math.random() * 1000000),
                 items: finalItems,
-                sellerId: window.UserSession?.seller?.id,
+                sellerId: UserSession?.seller?.id,
                 priceVariant: variant,
                 tableId: tableId,
                 discount: order?.discount || 0,
@@ -427,20 +428,20 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                     label: OrderStatus.KITCHEN,
                     date: now
                 },
-                charges: getConsolidatedCharges(finalItems) || window.UserSession?.seller?.charges || [],
+                charges: getConsolidatedCharges(finalItems) || UserSession?.seller?.charges || [],
                 payMode: PaymentMode.CASH,
                 date: now
             };
 
             // Save to Firestore
-            await window.sdk.db.collection("Orders").doc(orderId).set(
+            await sdk.db.collection("Orders").doc(orderId).set(
                 order ? { items: finalItems } : orderData,
                 { merge: true }
             );
 
             // Track order creation/update with analytics
-            if (window.sdk.analytics) {
-                window.sdk.analytics.logEvent(order ? 'order_updated' : 'order_created', {
+            if (sdk.analytics) {
+                sdk.analytics.logEvent(order ? 'order_updated' : 'order_created', {
                     order_id: orderId,
                     table_id: tableId || 'direct',
                     order_type: OrderStatus.KITCHEN,
@@ -562,7 +563,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                                     <i className="ph ph-x"></i>
                                 </button>
                             </div>
-                            
+
                             {/* Quick add section for existing items */}
                             {order && order.items && order.items.length > 0 && (
                                 <div className="bg-blue-50 p-3 rounded-lg mb-4">
@@ -574,7 +575,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                                         {order.items.map((item, index) => (
                                             <button
                                                 key={index}
-                                                onClick={() => handleAddToCart({ 
+                                                onClick={() => handleAddToCart({
                                                     product: {
                                                         id: item.pid,
                                                         title: item.title,
@@ -596,7 +597,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                                     </div>
                                 </div>
                             )}
-                            
+
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 {filteredProducts.map(product => (
                                     <POSProductCard
@@ -684,7 +685,7 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
                         <div className="flex justify-between items-center">
                             <h3 className="font-medium text-gray-700">Subtotal</h3>
                             <span className="font-medium text-red-600 text-lg">
-                                {window.UserSession?.getCurrency()}{Object.values(cart).reduce((sum, item) => {
+                                {UserSession?.getCurrency()}{Object.values(cart).reduce((sum, item) => {
                                     const basePrice = item.variant ? item.variant.price : item.product.price;
                                     const addonsTotal = item.addons ? item.addons.reduce((acc, addon) => acc + addon.price, 0) : 0;
                                     return sum + (basePrice + addonsTotal) * item.quantity;
@@ -732,8 +733,8 @@ function POS({ title, tableId, order, variant, checkout = false, includeAllProdu
 
 // POS Product Card Component (renamed to avoid conflicts)
 function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
-    const [addAnimation, setAddAnimation] = React.useState(false);
-    const [showOptions, setShowOptions] = React.useState(false);
+    const [addAnimation, setAddAnimation] = useState(false);
+    const [showOptions, setShowOptions] = useState(false);
 
     // Check if product has options
     const hasOptions = (product.priceVariants && product.priceVariants.length > 0) ||
@@ -809,9 +810,9 @@ function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
                         <h3 className="font-medium text-gray-900 line-clamp-1">{product.title}</h3>
                         <div className="flex items-center justify-between mt-1">
                             <div>
-                                <span className="font-medium text-gray-800">{window.UserSession?.getCurrency()}{product.price}</span>
+                                <span className="font-medium text-gray-800">{UserSession?.getCurrency()}{product.price}</span>
                                 {product.mrp > product.price && (
-                                    <span className="text-xs text-gray-500 line-through ml-1">{window.UserSession?.getCurrency()}{product.mrp}</span>
+                                    <span className="text-xs text-gray-500 line-through ml-1">{UserSession?.getCurrency()}{product.mrp}</span>
                                 )}
                             </div>
                         </div>
@@ -868,12 +869,12 @@ function POSProductCard({ product, inCart = 0, onAdd, onRemove }) {
 
 // Raw Product Panel Component
 function RawProductPanel({ onClose, onAdd }) {
-    const [title, setTitle] = React.useState('');
-    const [price, setPrice] = React.useState('');
-    const [isValid, setIsValid] = React.useState(false);
+    const [title, setTitle] = useState('');
+    const [price, setPrice] = useState('');
+    const [isValid, setIsValid] = useState(false);
 
     // Validate form
-    React.useEffect(() => {
+    useEffect(() => {
         setIsValid(title.trim().length > 0 && !isNaN(price) && parseInt(price) > 0);
     }, [title, price]);
 
@@ -889,9 +890,9 @@ function RawProductPanel({ onClose, onAdd }) {
             cat: "Quick Items",
             active: true,
             date: new Date(),
-            sellerId: window.UserSession?.seller?.id || '',
-            sellerBusinessName: window.UserSession?.seller?.businessName || '',
-            sellerAvatar: window.UserSession?.seller?.avatar || '',
+            sellerId: UserSession?.seller?.id || '',
+            sellerBusinessName: UserSession?.seller?.businessName || '',
+            sellerAvatar: UserSession?.seller?.avatar || '',
             veg: true
         };
 
@@ -957,12 +958,12 @@ function RawProductPanel({ onClose, onAdd }) {
 
 // Product Options Modal Component
 function ProductOptionsModal({ product, onClose, onAdd }) {
-    const [selectedVariant, setSelectedVariant] = React.useState(null);
-    const [selectedAddons, setSelectedAddons] = React.useState([]);
-    const [quantity, setQuantity] = React.useState(1);
+    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [selectedAddons, setSelectedAddons] = useState([]);
+    const [quantity, setQuantity] = useState(1);
 
     // Calculate total price
-    const totalPrice = React.useMemo(() => {
+    const totalPrice = useMemo(() => {
         let total = selectedVariant ? selectedVariant.price : product.price;
         const addonTotal = selectedAddons.reduce((sum, addon) => sum + addon.price, 0);
         return (total + addonTotal) * quantity;
@@ -1000,7 +1001,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                         className="form-radio text-red-500 focus:ring-red-500"
                                     />
                                     <span className="ml-3 flex-1">Regular</span>
-                                    <span className="text-gray-600">{window.UserSession?.getCurrency()}{product.price}</span>
+                                    <span className="text-gray-600">{UserSession?.getCurrency()}{product.price}</span>
                                 </label>
 
                                 {product.priceVariants.map((variant) => (
@@ -1016,7 +1017,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                             className="form-radio text-red-500 focus:ring-red-500"
                                         />
                                         <span className="ml-3 flex-1">{variant.name}</span>
-                                        <span className="text-gray-600">{window.UserSession?.getCurrency()}{variant.price}</span>
+                                        <span className="text-gray-600">{UserSession?.getCurrency()}{variant.price}</span>
                                     </label>
                                 ))}
                             </div>
@@ -1049,7 +1050,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                                             className="form-checkbox text-red-500 focus:ring-red-500"
                                         />
                                         <span className="ml-3 flex-1">{addon.name}</span>
-                                        <span className="text-gray-600">+{window.UserSession?.getCurrency()}{addon.price}</span>
+                                        <span className="text-gray-600">+{UserSession?.getCurrency()}{addon.price}</span>
                                     </label>
                                 ))}
                             </div>
@@ -1081,7 +1082,7 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
                 <div className="p-4 border-t bg-white">
                     <div className="flex items-center justify-between mb-4">
                         <span className="text-gray-600">Total Amount</span>
-                        <span className="text-lg font-medium text-red-600">{window.UserSession?.getCurrency()}{totalPrice.toFixed(2)}</span>
+                        <span className="text-lg font-medium text-red-600">{UserSession?.getCurrency()}{totalPrice.toFixed(2)}</span>
                     </div>
                     <button
                         onClick={() => {
@@ -1103,6 +1104,3 @@ function ProductOptionsModal({ product, onClose, onAdd }) {
         </div>
     );
 }
-
-// Make component available globally
-window.POS = POS; 

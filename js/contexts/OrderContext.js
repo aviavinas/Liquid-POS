@@ -1,22 +1,25 @@
-// OrderContext.js - Centralized Order Management
-const OrderContext = React.createContext();
+import { createContext, useContext, useCallback, useState, useEffect } from 'react';
+import { sdk } from '../sdk.js';
 
-function OrderProvider({ children }) {
-    const [activeOrders, setActiveOrders] = React.useState([]);
-    const [completedOrders, setCompletedOrders] = React.useState([]);
-    const [isLoading, setIsLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
+// OrderContext.js - Centralized Order Management
+const OrderContext = createContext();
+
+export function OrderProvider({ children }) {
+    const [activeOrders, setActiveOrders] = useState([]);
+    const [completedOrders, setCompletedOrders] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     // Pagination and filtering state
-    const [dateRange, setDateRange] = React.useState({
+    const [dateRange, setDateRange] = useState({
         start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         end: new Date()
     });
-    const [lastVisibleDoc, setLastVisibleDoc] = React.useState(null);
-    const [hasMoreOrders, setHasMoreOrders] = React.useState(true);
+    const [lastVisibleDoc, setLastVisibleDoc] = useState(null);
+    const [hasMoreOrders, setHasMoreOrders] = useState(true);
 
     // Initialize listeners for active orders
-    React.useEffect(() => {
+    useEffect(() => {
         console.log("[OrderContext] Setting up real-time listeners for active orders");
 
         // Set up listener for active orders (KITCHEN, PLACED)
@@ -34,7 +37,7 @@ function OrderProvider({ children }) {
 
         try {
             // Create query for active orders (KITCHEN, PLACED)
-            const query = window.sdk.db.collection("Orders")
+            const query = sdk.db.collection("Orders")
                 .where("currentStatus.label", "in", ["KITCHEN", "PLACED"])
                 .orderBy("date", "desc")
                 .limit(50);  // Reasonable limit
@@ -79,11 +82,11 @@ function OrderProvider({ children }) {
         try {
             // Convert date objects to Firestore timestamps if needed
             const startTimestamp = dateRange.start instanceof Date ?
-                window.sdk.timestamp.fromDate(dateRange.start) : dateRange.start;
+                sdk.timestamp.fromDate(dateRange.start) : dateRange.start;
             const endTimestamp = dateRange.end instanceof Date ?
-                window.sdk.timestamp.fromDate(dateRange.end) : dateRange.end;
+                sdk.timestamp.fromDate(dateRange.end) : dateRange.end;
 
-            let query = window.sdk.db.collection("Orders")
+            let query = sdk.db.collection("Orders")
                 .where("currentStatus.label", "==", "COMPLETED")
                 .orderBy("date", "desc")
                 .limit(20);
@@ -91,7 +94,7 @@ function OrderProvider({ children }) {
             // Add date filtering if supported
             try {
                 // This may fail if the right indexes don't exist
-                query = window.sdk.db.collection("Orders")
+                query = sdk.db.collection("Orders")
                     .where("currentStatus.label", "==", "COMPLETED")
                     .where("date", ">=", startTimestamp)
                     .where("date", "<=", endTimestamp)
@@ -131,7 +134,7 @@ function OrderProvider({ children }) {
     };
 
     // Filter active orders by table and channel
-    const getOrdersByTableAndChannel = React.useCallback(() => {
+    const getOrdersByTableAndChannel = useCallback(() => {
         const tableOrders = {};
         const channelOrders = {};
 
@@ -176,7 +179,7 @@ function OrderProvider({ children }) {
     }, [activeOrders]);
 
     // Get an order by ID
-    const getOrderById = React.useCallback((orderId) => {
+    const getOrderById = useCallback((orderId) => {
         // First check active orders
         const activeOrder = activeOrders.find(order => order.id === orderId);
         if (activeOrder) return activeOrder;
@@ -190,7 +193,7 @@ function OrderProvider({ children }) {
     }, [activeOrders, completedOrders]);
 
     // Get orders for a specific table or channel
-    const getOrdersForSource = React.useCallback((tableId, variant, orderStatus = "KITCHEN") => {
+    const getOrdersForSource = useCallback((tableId, variant, orderStatus = "KITCHEN") => {
         // Filter active orders first by status
         const statusFilteredOrders = activeOrders.filter(order =>
             order.currentStatus?.label === orderStatus &&
@@ -283,14 +286,10 @@ function OrderProvider({ children }) {
 }
 
 // Custom hook for using the order context
-function useOrders() {
-    const context = React.useContext(OrderContext);
+export function useOrders() {
+    const context = useContext(OrderContext);
     if (context === undefined) {
         throw new Error("useOrders must be used within an OrderProvider");
     }
     return context;
 }
-
-// Make OrderProvider and useOrders available globally
-window.OrderProvider = OrderProvider;
-window.useOrders = useOrders; 

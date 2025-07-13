@@ -1,26 +1,27 @@
+import React, { useState, useEffect } from 'react';
+import CustomerCard from '../components/CustomerCard.js';
+import CustomerDetails from '../components/CustomerDetails.js';
+
 // Customers Component
-function Customers() {
-    const [customers, setCustomers] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [filterType, setFilterType] = React.useState('all'); // 'all', 'creditors'
-    const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = React.useState(false);
-    const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
-    const [customerCardLoaded, setCustomerCardLoaded] = React.useState(false);
+export default function Customers() {
+    const [customers, setCustomers] = te([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterType, setFilterType] = useState('all'); // 'all', 'creditors'
+    const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [customerCardLoaded, setCustomerCardLoaded] = useState(false);
 
-    // Expose refreshCustomers function globally so it can be called from components
-    window.refreshCustomers = fetchCustomers;
-
-    React.useEffect(() => {
+    useEffect(() => {
         // Check if CustomerCard component is loaded
-        if (!window.CustomerCard) {
+        if (!CustomerCard) {
             // Load CustomerCard component dynamically
             // First ensure ModalManager is loaded
             const loadDependencies = async () => {
                 try {
                     // Check and load ModalManager first if needed
-                    if (!window.ModalManager) {
+                    if (!ModalManager) {
                         console.log("Loading ModalManager before CustomerCard...");
                         const modalManagerScript = document.createElement('script');
                         modalManagerScript.src = 'js/components/ModalManager.js';
@@ -65,12 +66,12 @@ function Customers() {
             const customersQuery = sdk.db.collection("Customers");
 
             // Cancel any existing listener
-            if (window.customersUnsubscribe) {
-                window.customersUnsubscribe();
+            if (customersUnsubscribe) {
+                customersUnsubscribe();
             }
 
             // Setup real-time listener
-            window.customersUnsubscribe = customersQuery.onSnapshot(snapshot => {
+            customersUnsubscribe = customersQuery.onSnapshot(snapshot => {
                 const customersList = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
@@ -91,16 +92,16 @@ function Customers() {
     };
 
     // Clean up listener when component unmounts
-    React.useEffect(() => {
+    useEffect(() => {
         return () => {
-            if (window.customersUnsubscribe) {
-                window.customersUnsubscribe();
+            if (customersUnsubscribe) {
+                customersUnsubscribe();
             }
         };
     }, []);
 
     // Filter customers based on search query and filter type
-    const filteredCustomers = React.useMemo(() => {
+    const filteredCustomers = useMemo(() => {
         return customers
             .filter(customer => {
                 // Search filter
@@ -301,8 +302,8 @@ function Customers() {
 
     // Show success dialog after import
     const showImportSuccessDialog = (fileCount) => {
-        if (window.ModalManager) {
-            const modal = window.ModalManager.createCenterModal({
+        if (ModalManager) {
+            const modal = ModalManager.createCenterModal({
                 id: 'import-success-modal',
                 title: `${fileCount} File(s) Uploaded`,
                 content: `<p class="text-gray-600 mb-4">We will inform you in app notification after your customers are added.</p>`,
@@ -371,9 +372,9 @@ function Customers() {
 
     // Add Customer Modal component
     const AddCustomerModal = () => {
-        const [formData, setFormData] = React.useState({ name: '', phone: '' });
-        const [submitting, setSubmitting] = React.useState(false);
-        const [error, setError] = React.useState(null);
+        const [formData, setFormData] = useState({ name: '', phone: '' });
+        const [submitting, setSubmitting] = useState(false);
+        const [error, setError] = useState(null);
 
         const handleSubmit = async (e) => {
             e.preventDefault();
@@ -417,9 +418,9 @@ function Customers() {
         };
 
         // Use ModalManager if available
-        if (window.ModalManager && isAddCustomerModalOpen) {
-            React.useEffect(() => {
-                const modal = window.ModalManager.createCenterModal({
+        if (ModalManager && isAddCustomerModalOpen) {
+            useEffect(() => {
+                const modal = ModalManager.createCenterModal({
                     id: 'add-customer-modal',
                     title: 'Add New Customer',
                     content: `
@@ -496,7 +497,7 @@ function Customers() {
 
                         submitBtn.addEventListener('click', async () => {
                             if (!nameInput.value || !phoneInput.value) {
-                                window.ModalManager.showToast("Please fill all required fields", { type: "error" });
+                                ModalManager.showToast("Please fill all required fields", { type: "error" });
                                 return;
                             }
 
@@ -504,7 +505,7 @@ function Customers() {
                                 // Check if customer already exists
                                 const existingCustomer = customers.find(c => c.phone === phoneInput.value);
                                 if (existingCustomer) {
-                                    window.ModalManager.showToast("A customer with this phone number already exists", { type: "error" });
+                                    ModalManager.showToast("A customer with this phone number already exists", { type: "error" });
                                     return;
                                 }
 
@@ -527,11 +528,11 @@ function Customers() {
                                 });
 
                                 modalControl.close();
-                                window.ModalManager.showToast("Customer added successfully");
+                                ModalManager.showToast("Customer added successfully");
                                 fetchCustomers(); // Refresh the list
                             } catch (error) {
                                 console.error("Error adding customer:", error);
-                                window.ModalManager.showToast("Failed to add customer. Please try again.", { type: "error" });
+                                ModalManager.showToast("Failed to add customer. Please try again.", { type: "error" });
                                 submitBtn.disabled = false;
                                 submitBtn.textContent = "Add Customer";
                             }
@@ -642,8 +643,8 @@ function Customers() {
 
     // Import Customers Modal component
     const ImportCustomersModal = () => {
-        const [uploading, setUploading] = React.useState(false);
-        const [error, setError] = React.useState(null);
+        const [uploading, setUploading] = useState(false);
+        const [error, setError] = useState(null);
 
         const handleFileUpload = async (e) => {
             const files = e.target.files;
@@ -674,9 +675,9 @@ function Customers() {
         };
 
         // Use ModalManager if available
-        if (window.ModalManager && isImportModalOpen) {
-            React.useEffect(() => {
-                const modal = window.ModalManager.createCenterModal({
+        if (ModalManager && isImportModalOpen) {
+            useEffect(() => {
+                const modal = ModalManager.createCenterModal({
                     id: 'import-customers-modal',
                     title: 'Import Customers',
                     content: `
@@ -738,7 +739,7 @@ function Customers() {
                         fileInput.addEventListener('change', async (e) => {
                             const files = e.target.files;
                             if (!files || files.length === 0) {
-                                window.ModalManager.showToast("Please select at least one file", { type: "error" });
+                                ModalManager.showToast("Please select at least one file", { type: "error" });
                                 return;
                             }
 
@@ -761,7 +762,7 @@ function Customers() {
                                 }, 2000);
                             } catch (error) {
                                 console.error("Error uploading files:", error);
-                                window.ModalManager.showToast("Failed to upload files. Please try again.", { type: "error" });
+                                ModalManager.showToast("Failed to upload files. Please try again.", { type: "error" });
                                 uploadBtn.classList.remove('opacity-70');
                                 uploadBtn.classList.add('hover:bg-blue-700');
                                 uploadBtn.innerHTML = `<i class="ph ph-file-arrow-up mr-2"></i> Choose Files`;
@@ -889,8 +890,8 @@ function Customers() {
 
     // Render the CustomerCard component for each filtered customer
     const renderCustomerCard = (customer) => {
-        return window.CustomerCard ? (
-            <window.CustomerCard key={customer.id} customer={customer} />
+        return CustomerCard ? (
+            <CustomerCard key={customer.id} customer={customer} />
         ) : (
             <div key={customer.id} className="p-3 border border-gray-200 rounded-lg mb-2">
                 Loading customer component...

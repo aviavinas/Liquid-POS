@@ -1,3 +1,5 @@
+import { PrintTemplate, PrintSection } from './PrintTemplate.js';
+
 // BluetoothPrinting.js - Service for handling Bluetooth thermal printer connections
 // This service uses Web Bluetooth API which is supported in Chrome and Edge, but not Safari or Firefox
 
@@ -8,7 +10,7 @@
  * BluetoothPrinting provides methods to connect to and print to Bluetooth thermal printers
  * using Web Bluetooth API
  */
-class BluetoothPrinting {
+class BluetoothPrintingClass {
     constructor() {
         // Initialize printer sizes first
         this.printerSizes = {
@@ -47,8 +49,8 @@ class BluetoothPrinting {
 
         // Make PrintTemplate and PrintSection classes accessible as properties
         // These should be available globally from PrintTemplate.js
-        this.PrintTemplate = window.PrintTemplate;
-        this.PrintSection = window.PrintSection;
+        this.PrintTemplate = PrintTemplate;
+        this.PrintSection = PrintSection;
 
         // Check if the classes are available
         if (!this.PrintTemplate || !this.PrintSection) {
@@ -100,24 +102,24 @@ class BluetoothPrinting {
 
         try {
             const result = await this._printReceipt(orderId, 'kot', null, false, channel);
-            
+
             // If printing was successful and we had newly added items, clear their flags
             if (result && orderId) {
                 const orderResult = await this.getOrderData(orderId);
                 if (orderResult && orderResult.hasNewItems) {
-                    const orderRef = window.sdk.db.collection("Orders").doc(orderId);
+                    const orderRef = sdk.db.collection("Orders").doc(orderId);
                     const updatedItems = orderResult.full.items.map(item => ({
                         ...item,
                         newlyAdded: false,  // Reset the flag after printing
                         newlyAddedQty: 0    // Reset the newly added quantity as well
                     }));
-                    
+
                     // Update the order with flags cleared
                     await orderRef.update({ items: updatedItems });
                     console.log("Cleared newlyAdded flags and quantities after KOT printing");
                 }
             }
-            
+
             return result;
         } catch (error) {
             console.error('Error in printKOT:', error);
@@ -167,11 +169,11 @@ class BluetoothPrinting {
             this._showToast("Order not found", "error");
             return false;
         }
-        
+
         // For KOT printing, use filtered data if we have newly added items
         // For bill printing, always use the full order data
-        const orderData = (type === 'kot' && orderResult.hasNewItems) 
-            ? orderResult.filtered 
+        const orderData = (type === 'kot' && orderResult.hasNewItems)
+            ? orderResult.filtered
             : orderResult.full;
 
         // Use order's channel if not provided
@@ -198,7 +200,7 @@ class BluetoothPrinting {
                 await this._connectToPrinter(printer, receiptName);
 
                 // Get seller information and template
-                const seller = window.UserSession?.seller || {};
+                const seller = UserSession?.seller || {};
 
                 // Check if we have a custom template
                 const hasCustomTemplate = seller.printTemplate &&
@@ -263,7 +265,7 @@ class BluetoothPrinting {
         this._showToast(`Attempting browser print for ${receiptName}...`, "info");
         try {
             // Get seller information
-            const seller = window.UserSession?.seller || {};
+            const seller = UserSession?.seller || {};
 
             // Check if we have a custom template
             const hasCustomTemplate = seller.printTemplate &&
@@ -406,7 +408,7 @@ class BluetoothPrinting {
      * @private
      */
     async getOrderData(orderId) {
-        const orderRef = window.sdk.db.collection("Orders").doc(orderId);
+        const orderRef = sdk.db.collection("Orders").doc(orderId);
         const orderDoc = await orderRef.get();
         const orderData = orderDoc.data();
 
@@ -415,13 +417,13 @@ class BluetoothPrinting {
         }
 
         // Check if there are any newly added items
-        const hasNewlyAddedItems = orderData.items && 
+        const hasNewlyAddedItems = orderData.items &&
             orderData.items.some(item => item.newlyAdded === true);
-            
+
         if (hasNewlyAddedItems) {
             // Create a filtered version with only newly added items
             const newlyAddedItems = orderData.items.filter(item => item.newlyAdded === true);
-            
+
             // Process the newly added items to show only the newly added quantities
             const processedItems = newlyAddedItems.map(item => {
                 // If we have a specific newly added quantity, use that
@@ -436,18 +438,18 @@ class BluetoothPrinting {
                 console.log(`KOT: Item ${item.title} has no newlyAddedQty, using full quantity ${item.qnt}`);
                 return item; // Otherwise keep the item as is
             });
-            
+
             // Clone the order data to avoid modifying the original
             const filteredOrder = JSON.parse(JSON.stringify(orderData));
-            
+
             // Add metadata about the filtered items
             filteredOrder.isPartialKOT = true;
             filteredOrder.newItemsCount = newlyAddedItems.length;
             filteredOrder.totalItemsCount = orderData.items.length;
-            
+
             // Replace items with only the newly added ones (with adjusted quantities)
             filteredOrder.items = processedItems;
-            
+
             // Return both full and filtered versions
             return {
                 full: orderData,
@@ -455,7 +457,7 @@ class BluetoothPrinting {
                 hasNewItems: true
             };
         }
-        
+
         // If no newly added items, return the full order data
         return {
             full: orderData,
@@ -689,10 +691,10 @@ class BluetoothPrinting {
      * @private
      */
     _showToast(message, type = 'info') {
-        if (window.ModalManager && typeof window.ModalManager.showToast === 'function') {
-            window.ModalManager.showToast(message, { type });
-        } else if (typeof window.showToast === 'function') {
-            window.showToast(message, type);
+        if (ModalManager && typeof ModalManager.showToast === 'function') {
+            ModalManager.showToast(message, { type });
+        } else if (typeof showToast === 'function') {
+            showToast(message, type);
         } else {
             console.log(`[Toast ${type}]: ${message}`);
         }
@@ -1054,7 +1056,7 @@ class BluetoothPrinting {
     async showPrinterConnectionModal() {
         return new Promise((resolve, reject) => {
             // If ModalManager is available, use it to create a modal
-            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
                 const hasSavedPrinter = !!this.lastConnectedDevice;
 
                 const modalContent = `
@@ -1098,7 +1100,7 @@ class BluetoothPrinting {
                     </div>
                 `;
 
-                const modal = window.ModalManager.createCenterModal({
+                const modal = ModalManager.createCenterModal({
                     id: 'printer-connection-modal',
                     title: 'Connect to Printer',
                     content: modalContent,
@@ -1177,7 +1179,7 @@ class BluetoothPrinting {
      */
     async showPrinterSizeModal() {
         return new Promise((resolve, reject) => {
-            if (window.ModalManager && typeof window.ModalManager.createCenterModal === 'function') {
+            if (ModalManager && typeof ModalManager.createCenterModal === 'function') {
                 // Get current size for highlighting the active button
                 const currentSize = localStorage.getItem('printerWidth') || '3inch';
 
@@ -1211,7 +1213,7 @@ class BluetoothPrinting {
                     </div>
                 `;
 
-                const modal = window.ModalManager.createCenterModal({
+                const modal = ModalManager.createCenterModal({
                     id: 'printer-size-modal',
                     title: 'Printer Configuration',
                     content: modalContent,
@@ -1615,5 +1617,4 @@ class BluetoothPrinting {
     }
 }
 
-// Create a singleton instance
-window.BluetoothPrinting = new BluetoothPrinting();
+export const BluetoothPrinting = new BluetoothPrintingClass();

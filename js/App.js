@@ -1,6 +1,13 @@
-// Main App Component
-function App() {
-    const [activeTab, setActiveTab] = React.useState('dashboard');
+import { useState } from 'react';
+import Dashboard from './pages/Dashboard.js';
+import Products from './pages/Products.js';
+import Customers from './pages/Customers.js';
+import Passbook from './pages/Passbook.js';
+import Analytics from './pages/Analytics.js';
+import { SidebarNav, BottomNav } from './components/Navigation.js';
+
+export default function App() {
+    const [activeTab, setActiveTab] = useState('dashboard');
 
     const tabs = [
         { id: 'dashboard', icon: 'house', label: 'Home' },
@@ -38,4 +45,4 @@ function App() {
             />
         </div>
     );
-} 
+}

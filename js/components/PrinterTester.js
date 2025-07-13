@@ -1,5 +1,5 @@
 const PrinterTester = () => {
-    const [printerStatus, setPrinterStatus] = React.useState({
+    const [printerStatus, setPrinterStatus] = useState({
         isConnected: false,
         deviceName: null,
         lastError: null,
@@ -10,12 +10,12 @@ const PrinterTester = () => {
         usbVendorId: '',
         usbProductId: ''
     });
-    const [testResults, setTestResults] = React.useState([]);
-    const [isTestMode, setIsTestMode] = React.useState(false);
-    const [showAdvanced, setShowAdvanced] = React.useState(false);
+    const [testResults, setTestResults] = useState([]);
+    const [isTestMode, setIsTestMode] = useState(false);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     // Initialize printer status
-    React.useEffect(() => {
+    useEffect(() => {
         // Load saved printer settings from localStorage
         const savedSettings = localStorage.getItem('printerSettings');
         if (savedSettings) {
@@ -26,19 +26,19 @@ const PrinterTester = () => {
             }));
         }
 
-        if (window.BluetoothPrinting) {
+        if (BluetoothPrinting) {
             setPrinterStatus(prev => ({
                 ...prev,
-                isConnected: window.BluetoothPrinting.connected,
-                deviceName: window.BluetoothPrinting.device?.name || null,
-                printerSize: window.BluetoothPrinting.printerWidth === 32 ? '2inch' : 
-                           window.BluetoothPrinting.printerWidth === 48 ? '3inch' : '4inch'
+                isConnected: BluetoothPrinting.connected,
+                deviceName: BluetoothPrinting.device?.name || null,
+                printerSize: BluetoothPrinting.printerWidth === 32 ? '2inch' :
+                    BluetoothPrinting.printerWidth === 48 ? '3inch' : '4inch'
             }));
         }
     }, []);
 
     // Save settings to localStorage whenever they change
-    React.useEffect(() => {
+    useEffect(() => {
         localStorage.setItem('printerSettings', JSON.stringify({
             type: printerStatus.type,
             printerSize: printerStatus.printerSize,
@@ -52,7 +52,7 @@ const PrinterTester = () => {
     const runPrinterTest = async () => {
         setIsTestMode(true);
         setTestResults([]);
-        
+
         try {
             switch (printerStatus.type) {
                 case 'bluetooth':
@@ -78,7 +78,7 @@ const PrinterTester = () => {
     const testBluetoothPrinter = async () => {
         // Step 1: Check Bluetooth Support
         addTestResult('Checking Bluetooth support...', 'info');
-        if (!window.BluetoothPrinting.isSupported()) {
+        if (!BluetoothPrinting.isSupported()) {
             throw new Error('Bluetooth not supported in this browser. Please use Chrome or Edge.');
         }
         addTestResult('✓ Bluetooth is supported', 'success');
@@ -93,8 +93,8 @@ const PrinterTester = () => {
 
         // Step 3: Connect to Printer
         addTestResult('Attempting to connect to printer...', 'info');
-        await window.BluetoothPrinting.connect();
-        addTestResult(`✓ Successfully connected to ${window.BluetoothPrinting.device.name}`, 'success');
+        await BluetoothPrinting.connect();
+        addTestResult(`✓ Successfully connected to ${BluetoothPrinting.device.name}`, 'success');
 
         // Step 4: Print Test Pattern
         addTestResult('Printing test pattern...', 'info');
@@ -104,14 +104,14 @@ const PrinterTester = () => {
         setPrinterStatus(prev => ({
             ...prev,
             isConnected: true,
-            deviceName: window.BluetoothPrinting.device.name,
+            deviceName: BluetoothPrinting.device.name,
             lastError: null
         }));
     };
 
     const testWiredPrinter = async () => {
         addTestResult('Testing USB/Serial printer connection...', 'info');
-        
+
         try {
             // Check if Web Serial API is available
             if (!('serial' in navigator)) {
@@ -132,9 +132,9 @@ const PrinterTester = () => {
             const writer = port.writable.getWriter();
             await printTestPattern(writer);
             writer.releaseLock();
-            
+
             addTestResult('✓ Test pattern sent successfully', 'success');
-            
+
             // Close the port
             await port.close();
             addTestResult('✓ Port closed successfully', 'success');
@@ -152,7 +152,7 @@ const PrinterTester = () => {
 
     const testWifiPrinter = async () => {
         addTestResult('Testing WiFi printer connection...', 'info');
-        
+
         try {
             const { ipAddress, port } = printerStatus;
             if (!ipAddress) {
@@ -160,21 +160,21 @@ const PrinterTester = () => {
             }
 
             addTestResult(`Attempting to connect to ${ipAddress}:${port}...`, 'info');
-            
+
             // In a real implementation, you would:
             // 1. Establish a WebSocket connection to a proxy server
             // 2. The proxy server would handle the raw TCP connection to the printer
             // 3. Send the test pattern through the WebSocket
-            
+
             // For now, we'll just simulate the connection
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             addTestResult('✓ Connected to printer', 'success');
             addTestResult('Printing test pattern...', 'info');
-            
+
             // Simulate printing
             await new Promise(resolve => setTimeout(resolve, 1000));
-            
+
             addTestResult('✓ Test pattern sent successfully', 'success');
 
             setPrinterStatus(prev => ({
@@ -215,8 +215,8 @@ const PrinterTester = () => {
 
         if (writer) {
             await writer.write(testData);
-        } else if (window.BluetoothPrinting) {
-            await window.BluetoothPrinting.sendData(testData);
+        } else if (BluetoothPrinting) {
+            await BluetoothPrinting.sendData(testData);
         }
     };
 
@@ -226,8 +226,8 @@ const PrinterTester = () => {
 
     const disconnectPrinter = async () => {
         try {
-            if (printerStatus.type === 'bluetooth' && window.BluetoothPrinting) {
-                await window.BluetoothPrinting.disconnect();
+            if (printerStatus.type === 'bluetooth' && BluetoothPrinting) {
+                await BluetoothPrinting.disconnect();
             }
             setPrinterStatus(prev => ({
                 ...prev,
@@ -242,8 +242,8 @@ const PrinterTester = () => {
     };
 
     const changePrinterSize = (size) => {
-        if (window.BluetoothPrinting) {
-            window.BluetoothPrinting.setPrinterSize(size);
+        if (BluetoothPrinting) {
+            BluetoothPrinting.setPrinterSize(size);
             setPrinterStatus(prev => ({ ...prev, printerSize: size }));
             addTestResult(`Printer size changed to ${size}`, 'info');
         }
@@ -276,12 +276,10 @@ const PrinterTester = () => {
                     <h2 className="text-xl font-semibold text-gray-800">Printer Configuration</h2>
                 </div>
                 <div className="flex items-center">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${
-                        printerStatus.isConnected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                        <span className={`w-2 h-2 rounded-full mr-2 ${
-                            printerStatus.isConnected ? 'bg-green-500' : 'bg-gray-500'
-                        }`}></span>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm ${printerStatus.isConnected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                        <span className={`w-2 h-2 rounded-full mr-2 ${printerStatus.isConnected ? 'bg-green-500' : 'bg-gray-500'
+                            }`}></span>
                         {printerStatus.isConnected ? 'Connected' : 'Disconnected'}
                     </span>
                 </div>
@@ -293,33 +291,30 @@ const PrinterTester = () => {
                 <div className="grid grid-cols-3 gap-4">
                     <button
                         onClick={() => handlePrinterTypeChange('bluetooth')}
-                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${
-                            printerStatus.type === 'bluetooth' 
-                            ? 'border-primary bg-red-50 text-primary' 
+                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${printerStatus.type === 'bluetooth'
+                            ? 'border-primary bg-red-50 text-primary'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                            }`}
                     >
                         <i className="ph ph-bluetooth text-2xl mb-2"></i>
                         <span className="text-sm font-medium">Bluetooth</span>
                     </button>
                     <button
                         onClick={() => handlePrinterTypeChange('wired')}
-                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${
-                            printerStatus.type === 'wired' 
-                            ? 'border-primary bg-red-50 text-primary' 
+                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${printerStatus.type === 'wired'
+                            ? 'border-primary bg-red-50 text-primary'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                            }`}
                     >
                         <i className="ph ph-usb text-2xl mb-2"></i>
                         <span className="text-sm font-medium">USB/Serial</span>
                     </button>
                     <button
                         onClick={() => handlePrinterTypeChange('wifi')}
-                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${
-                            printerStatus.type === 'wifi' 
-                            ? 'border-primary bg-red-50 text-primary' 
+                        className={`flex flex-col items-center p-4 rounded-lg border transition-all ${printerStatus.type === 'wifi'
+                            ? 'border-primary bg-red-50 text-primary'
                             : 'border-gray-200 hover:border-gray-300'
-                        }`}
+                            }`}
                     >
                         <i className="ph ph-wifi-high text-2xl mb-2"></i>
                         <span className="text-sm font-medium">WiFi</span>
@@ -331,7 +326,7 @@ const PrinterTester = () => {
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="text-sm font-medium text-gray-700">Printer Settings</h3>
-                    <button 
+                    <button
                         onClick={() => setShowAdvanced(!showAdvanced)}
                         className="text-sm text-primary hover:text-red-600 flex items-center"
                     >
@@ -349,7 +344,7 @@ const PrinterTester = () => {
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Printer Size</p>
-                            <select 
+                            <select
                                 value={printerStatus.printerSize}
                                 onChange={(e) => changePrinterSize(e.target.value)}
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
@@ -428,7 +423,7 @@ const PrinterTester = () => {
                     <i className="ph ph-test-tube mr-2"></i>
                     Run Printer Test
                 </button>
-                
+
                 {printerStatus.isConnected && (
                     <button
                         onClick={disconnectPrinter}
@@ -448,13 +443,12 @@ const PrinterTester = () => {
                     </div>
                     <div className="divide-y max-h-60 overflow-auto">
                         {testResults.map((result, index) => (
-                            <div 
+                            <div
                                 key={index}
-                                className={`px-4 py-2 text-sm ${
-                                    result.type === 'error' ? 'text-red-600 bg-red-50' :
+                                className={`px-4 py-2 text-sm ${result.type === 'error' ? 'text-red-600 bg-red-50' :
                                     result.type === 'success' ? 'text-green-600 bg-green-50' :
-                                    'text-gray-600'
-                                }`}
+                                        'text-gray-600'
+                                    }`}
                             >
                                 {result.message}
                             </div>
@@ -501,6 +495,3 @@ const PrinterTester = () => {
         </div>
     );
 };
-
-// Export the component
-window.PrinterTester = PrinterTester; 

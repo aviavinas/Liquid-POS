@@ -1,5 +1,5 @@
 // Dashboard Card Component
-function DashboardCard({ icon, title, value, trend, color = 'primary', compact = false, className = '' }) {
+export default function DashboardCard({ icon, title, value, trend, color = 'primary', compact = false, className = '' }) {
     // Set background and icon color classes based on the color prop
     let bgClass = 'bg-gradient-to-br from-warm-bg to-white';
     let iconColorClass = 'text-red-500';

@@ -2,14 +2,14 @@
 const DUMMY_THUMB = "https://firebasestorage.googleapis.com/v0/b/frihbi-app.appspot.com/o/assets%2Fproduct-placeholder.png?alt=media&token=183bdac4-2f9b-4645-8147-7cfa921ba0e9";
 
 // Payment modes enum
-const PaymentMode = {
+export const PaymentMode = {
     DIGITAL: "DIGITAL",
     CASH: "CASH",
     CREDIT: "CREDIT"
 };
 
 // Order status enum
-const OrderStatus = {
+export const OrderStatus = {
     PLACED: "PLACED",
     KITCHEN: "KITCHEN",
     COMPLETED: "COMPLETED",
@@ -22,7 +22,7 @@ function asPaymentMode(mode) {
 }
 
 // Charge class for additional charges like tax, packaging, etc.
-class Charge {
+export class Charge {
     constructor(data = {}) {
         this.name = data.name || '';
         this.value = data.value || 0;
@@ -62,7 +62,7 @@ class Charge {
 }
 
 // Item class - equivalent to Flutter Item
-class Item {
+export class Item {
     constructor(data) {
         this.data = data;
     }
@@ -146,7 +146,7 @@ class Item {
 }
 
 // Order Status Entry class
-class OrderStatusEntry {
+export class OrderStatusEntry {
     constructor(statusData) {
         this.statusData = statusData;
     }
@@ -163,7 +163,7 @@ class OrderStatusEntry {
 }
 
 // MOrder class - equivalent to Flutter MOrder
-class MOrder {
+export class MOrder {
     constructor(data) {
         this.data = data;
     }
@@ -171,7 +171,7 @@ class MOrder {
     // Constructor with required fields
     static fromItems(id, items, discount, priceVariant, tableId, instructions, charges) {
         const now = new Date();
-        const seller = window.UserSession?.seller;
+        const seller = UserSession?.seller;
         const billNo = seller?.getBillNo ? seller.getBillNo() : Math.floor(Math.random() * 1000000);
 
         // Check if there's a bulk tax update hashtag in the charges
@@ -333,7 +333,7 @@ class MOrder {
     }
 
     get ref() {
-        return window.sdk.db.collection("Orders").doc(this.id);
+        return sdk.db.collection("Orders").doc(this.id);
     }
 
     getOrderSourceColor() {
@@ -385,7 +385,7 @@ class MOrder {
         if (newStatuses.length > 0) {
             await this.ref.update({
                 currentStatus: newStatuses[newStatuses.length - 1],
-                status: window.sdk.fieldValue.arrayUnion(...newStatuses)
+                status: sdk.fieldValue.arrayUnion(...newStatuses)
             });
 
             await this.reload();
@@ -434,7 +434,7 @@ class MOrder {
                 showToast(`🗑️ ${item.title} removed from order`);
                 console.log(`Item ${item.pid} removed from order`);
             }
-        } else if (window.UserSession?.seller?.hasPermission("Orders", "Delete")) {
+        } else if (UserSession?.seller?.hasPermission("Orders", "Delete")) {
             // Delete the entire order if it's the last item
             await this.ref.delete();
             showToast(`Order deleted`);
@@ -485,11 +485,3 @@ class MOrder {
         return doc.exists ? doc.data() : {};
     }
 }
-
-// Make classes available globally
-window.Item = Item;
-window.MOrder = MOrder;
-window.OrderStatus = OrderStatus;
-window.PaymentMode = PaymentMode;
-window.OrderStatusEntry = OrderStatusEntry;
-window.Charge = Charge; 

@@ -1,17 +1,19 @@
+import React, { useState, useEffect } from 'react';
+
 // Passbook Component
-function Passbook() {
-    const [transactions, setTransactions] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [filterType, setFilterType] = React.useState('all');
-    const [selectedCustomer, setSelectedCustomer] = React.useState(null);
-    const [customers, setCustomers] = React.useState([]);
-    const [dateFilter, setDateFilter] = React.useState('last7');
-    const [customDateRange, setCustomDateRange] = React.useState({ start: null, end: null });
-    const [activeFilters, setActiveFilters] = React.useState(['Cash', 'UPI/Card', 'Credit', 'Wallet', 'Sales']);
-    const [showTrends, setShowTrends] = React.useState(false);
-    const [isExporting, setIsExporting] = React.useState(false);
+export default function Passbook() {
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterType, setFilterType] = useState('all');
+    const [selectedCustomer, setSelectedCustomer] = useState(null);
+    const [customers, setCustomers] = useState([]);
+    const [dateFilter, setDateFilter] = useState('last7');
+    const [customDateRange, setCustomDateRange] = useState({ start: null, end: null });
+    const [activeFilters, setActiveFilters] = useState(['Cash', 'UPI/Card', 'Credit', 'Wallet', 'Sales']);
+    const [showTrends, setShowTrends] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const getDateRange = (filter) => {
         const now = new Date();
@@ -105,7 +107,7 @@ function Passbook() {
         });
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         async function fetchData() {
             try {
                 const ordersSnapshot = await sdk.db.collection("Orders")
@@ -188,7 +190,7 @@ function Passbook() {
         fetchData();
     }, []);
 
-    const filteredTransactions = React.useMemo(() => {
+    const filteredTransactions = useMemo(() => {
         const dateRange = getDateRange(dateFilter);
 
         return transactions
@@ -220,7 +222,7 @@ function Passbook() {
             .sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [transactions, selectedCustomer, dateFilter, customDateRange, searchQuery, customers, activeFilters]);
 
-    const summary = React.useMemo(() => {
+    const summary = useMemo(() => {
         const total = filteredTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
         const credit = filteredTransactions.reduce((sum, t) => t.type === 'credit' ? sum + (t.amount || 0) : sum, 0);
         const debit = filteredTransactions.reduce((sum, t) => t.type === 'debit' ? sum + Math.abs(t.amount || 0) : sum, 0);
@@ -285,14 +287,14 @@ function Passbook() {
 
             // Show success notification (assuming you have a toast notification system)
             // If you don't have one, you can omit this
-            if (window.showToast) {
-                window.showToast(`Exported ${dataToExport.length} transactions successfully`, 'success');
+            if (showToast) {
+                showToast(`Exported ${dataToExport.length} transactions successfully`, 'success');
             }
         } catch (err) {
             console.error('Export failed:', err);
             // Show error notification
-            if (window.showToast) {
-                window.showToast('Failed to export transactions', 'error');
+            if (showToast) {
+                showToast('Failed to export transactions', 'error');
             }
         } finally {
             setIsExporting(false);
@@ -375,7 +377,7 @@ function Passbook() {
                             </span>
                         </div>
                         <h3 className="text-2xl font-semibold text-gray-800 mt-1.5">
-                            {window.UserSession?.getCurrency()}{summary.credit.toFixed(0)}
+                            {UserSession?.getCurrency()}{summary.credit.toFixed(0)}
                         </h3>
                     </div>
 
@@ -392,7 +394,7 @@ function Passbook() {
                             </span>
                         </div>
                         <h3 className="text-2xl font-semibold text-gray-800 mt-1.5">
-                            {window.UserSession?.getCurrency()}{summary.wallet.toFixed(0)}
+                            {UserSession?.getCurrency()}{summary.wallet.toFixed(0)}
                         </h3>
                     </div>
                 </div>
@@ -406,7 +408,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">Cash</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            {window.UserSession?.getCurrency()}{summary.cash.toFixed(0)}
+                            {UserSession?.getCurrency()}{summary.cash.toFixed(0)}
                         </h3>
                     </div>
 
@@ -417,7 +419,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">UPI/Card</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            {window.UserSession?.getCurrency()}{summary.upi.toFixed(0)}
+                            {UserSession?.getCurrency()}{summary.upi.toFixed(0)}
                         </h3>
                     </div>
 
@@ -428,7 +430,7 @@ function Passbook() {
                     >
                         <p className="text-sm text-gray-600">Credit</p>
                         <h3 className="text-xl font-semibold text-gray-800 mt-1.5">
-                            {window.UserSession?.getCurrency()}{summary.debit.toFixed(0)}
+                            {UserSession?.getCurrency()}{summary.debit.toFixed(0)}
                         </h3>
                     </div>
                 </div>
@@ -488,7 +490,7 @@ function Passbook() {
     const TransactionCard = ({ transaction }) => {
         const customer = customers.find(c => c.id === transaction.customerId);
         const firstItem = transaction.items?.[0];
-        const [expanded, setExpanded] = React.useState(false);
+        const [expanded, setExpanded] = useState(false);
 
         // Determine the appropriate icon based on the item title
         const getItemIcon = (item) => {
@@ -600,7 +602,7 @@ function Passbook() {
                                     )}
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-medium text-gray-800">{window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}</p>
+                                    <p className="text-lg font-medium text-gray-800">{UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}</p>
                                     <p className="text-xs text-gray-500 flex items-center justify-end mt-0.5">
                                         <i className={`${paymentInfo.icon} mr-1`}></i>
                                         {paymentInfo.text}
@@ -654,9 +656,9 @@ function Passbook() {
                                                             <span className="font-medium text-gray-700">{item.title}</span>
                                                         </td>
                                                         <td className="py-2.5 text-center text-gray-600">{item.qnt}</td>
-                                                        <td className="py-2.5 text-right text-gray-600">{window.UserSession?.getCurrency()}{Number(item.price).toFixed(2)}</td>
+                                                        <td className="py-2.5 text-right text-gray-600">{UserSession?.getCurrency()}{Number(item.price).toFixed(2)}</td>
                                                         <td className="py-2.5 text-right font-medium text-gray-700">
-                                                            {window.UserSession?.getCurrency()}{(Number(item.price) * Number(item.qnt)).toFixed(2)}
+                                                            {UserSession?.getCurrency()}{(Number(item.price) * Number(item.qnt)).toFixed(2)}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -665,7 +667,7 @@ function Passbook() {
                                                 <tr className="border-t border-gray-200">
                                                     <td colSpan="3" className="py-3 text-right font-medium text-gray-600">Total</td>
                                                     <td className="py-3 text-right font-semibold text-gray-800">
-                                                        {window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
+                                                        {UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
                                                     </td>
                                                 </tr>
                                             </tfoot>
@@ -719,7 +721,7 @@ function Passbook() {
                                         <div className="mb-3">
                                             <div className="text-xs text-gray-500">Total Amount</div>
                                             <div className="font-medium text-lg text-primary">
-                                                {window.UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
+                                                {UserSession?.getCurrency()}{Math.abs(transaction.amount).toFixed(2)}
                                             </div>
                                         </div>
                                     </div>
@@ -791,7 +793,7 @@ function Passbook() {
                                     Cash
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    {window.UserSession?.getCurrency()}{summary.cash.toFixed(0)}
+                                    {UserSession?.getCurrency()}{summary.cash.toFixed(0)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
@@ -800,7 +802,7 @@ function Passbook() {
                                     UPI/Card
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    {window.UserSession?.getCurrency()}{summary.upi.toFixed(0)}
+                                    {UserSession?.getCurrency()}{summary.upi.toFixed(0)}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
@@ -809,7 +811,7 @@ function Passbook() {
                                     Credit
                                 </span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
-                                    {window.UserSession?.getCurrency()}{summary.debit.toFixed(0)}
+                                    {UserSession?.getCurrency()}{summary.debit.toFixed(0)}
                                 </span>
                             </div>
                         </div>
@@ -870,4 +872,4 @@ function Passbook() {
             </div>
         </div>
     );
-} 
+}

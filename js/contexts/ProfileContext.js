@@ -1,39 +1,41 @@
+import { createContext, useContext, useState, useEffect } from 'react';
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
+import { ProfileInfo } from '../models/ProfileInfo.js';
+import { Role } from '../models/Role.js';
+
 // ProfileContext.js - Manages seller profile data and related functions
-const ProfileContext = React.createContext();
+const ProfileContext = createContext();
 
 // Custom hook to use the profile context
-function useProfile() {
-    const context = React.useContext(ProfileContext);
+export function useProfile() {
+    const context = useContext(ProfileContext);
     if (!context) {
         throw new Error('useProfile must be used within a ProfileProvider');
     }
     return context;
 }
 
-// Make functions available globally
-window.useProfile = useProfile;
-window.ProfileProvider = ProfileProvider;
-
 // Provider component
-function ProfileProvider({ children }) {
-    const [profile, setProfile] = React.useState(null);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [tables, setTables] = React.useState([]);
-    const [billNo, setBillNo] = React.useState(0);
-    const [roles, setRoles] = React.useState([]);
+export function ProfileProvider({ children }) {
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [tables, setTables] = useState([]);
+    const [billNo, setBillNo] = useState(0);
+    const [roles, setRoles] = useState([]);
 
     // Fetch profile data on mount
-    React.useEffect(() => {
+    useEffect(() => {
         fetchProfile();
         // No need to set up a separate listener here as we have the dedicated useEffect below
     }, []);
 
     // Listen to profile changes
-    React.useEffect(() => {
+    useEffect(() => {
         if (!profile?.id) return;
 
-        const unsubscribe = window.sdk.profile.onSnapshot(
+        const unsubscribe = sdk.profile.onSnapshot(
             (doc) => {
                 if (doc.exists) {
                     const updatedData = new ProfileInfo({
@@ -91,7 +93,7 @@ function ProfileProvider({ children }) {
             }
 
             // Otherwise fetch from SDK
-            const profileDoc = await window.sdk.profile.get();
+            const profileDoc = await sdk.profile.get();
 
             if (!profileDoc.exists) {
                 setError('Profile not found');
@@ -148,7 +150,7 @@ function ProfileProvider({ children }) {
             let newBillNo = 0;
 
             // Get the current seller document
-            const sellerRef = window.sdk.profile;
+            const sellerRef = sdk.profile;
             const sellerDoc = await sellerRef.get();
 
             if (!sellerDoc.exists) return;
@@ -212,11 +214,11 @@ function ProfileProvider({ children }) {
             `${getStoreLink()}/getQR?id=${tableId}` :
             `${getStoreLink()}/getQR`;
 
-        window.open(url, '_blank');
+        open(url, '_blank');
 
         // Track analytics
-        if (window.sdk.analytics) {
-            window.sdk.analytics.logEvent('download_qr', {
+        if (sdk.analytics) {
+            sdk.analytics.logEvent('download_qr', {
                 table_id: tableId || 'store_qr',
                 store_url: getStoreLink()
             });
@@ -230,7 +232,7 @@ function ProfileProvider({ children }) {
             const permissionId = `${module.toLowerCase()}_${action.toLowerCase()}`;
 
             // Check permission directly with the SDK
-            const hasPermission = await window.sdk.permissions.hasPermission(permissionId);
+            const hasPermission = await sdk.permissions.hasPermission(permissionId);
 
             if (!hasPermission && !silent) {
                 showToast(`You don't have ${action} permission for ${module}`);
@@ -255,9 +257,9 @@ function ProfileProvider({ children }) {
 
         // Get all permissions for current user
         try {
-            const userPermissions = await window.sdk.permissions.getUserPermissions();
+            const userPermissions = await sdk.permissions.getUserPermissions();
             // If user has all permissions, consider them a super admin
-            const allPermissionIds = (await window.sdk.permissions.getPermissionSchema())
+            const allPermissionIds = (await sdk.permissions.getPermissionSchema())
                 .map(p => p.id);
 
             return allPermissionIds.every(id => userPermissions.includes(id));
@@ -278,7 +280,7 @@ function ProfileProvider({ children }) {
 
         // Get all permissions for current user
         try {
-            const userPermissions = await window.sdk.permissions.getUserPermissions();
+            const userPermissions = await sdk.permissions.getUserPermissions();
             // Admin should have edit permissions
             const adminPermissionIds = ["products_edit", "orders_edit", "customers_edit"];
             return adminPermissionIds.every(id => userPermissions.includes(id));
@@ -291,7 +293,7 @@ function ProfileProvider({ children }) {
     // Send notification
     const sendNotification = async (title, msg, { img, fcmToken } = {}) => {
         try {
-            await window.sdk.profile.collection('notification').add({
+            await sdk.profile.collection('notification').add({
                 title,
                 msg,
                 img,
@@ -313,13 +315,13 @@ function ProfileProvider({ children }) {
         try {
             const updatedTables = tables.filter(t => t.title !== tableId);
 
-            await window.sdk.profile.update({ tables: updatedTables });
+            await sdk.profile.update({ tables: updatedTables });
 
             setTables(updatedTables);
 
             // Track analytics
-            if (window.sdk.analytics) {
-                window.sdk.analytics.logEvent('remove_table', {
+            if (sdk.analytics) {
+                sdk.analytics.logEvent('remove_table', {
                     table_id: tableId
                 });
             }

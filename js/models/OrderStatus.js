@@ -50,6 +50,3 @@ const OrderStatus = {
         }
     }
 };
-
-// Export the OrderStatus enum
-window.OrderStatus = OrderStatus; 

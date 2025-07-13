@@ -1,5 +1,4 @@
-// ProfileInfo model for seller profile data
-class ProfileInfo {
+export class ProfileInfo {
     constructor(data = {}) {
         // Basic profile information
         this.id = data.id || '';
@@ -96,7 +95,7 @@ class ProfileInfo {
     // Check if user has permission
     hasPermission(module, action) {
         // Find role for current user
-        // Since auth is handled by the host platform, we can't use window.sdk.auth()
+        // Since auth is handled by the host platform, we can't use sdk.auth()
         // Instead, we'll use a different approach or assume the user has permission
 
         // For now, we'll assume the user has permission
@@ -116,6 +115,3 @@ class ProfileInfo {
         );
     }
 }
-
-// Make ProfileInfo available globally
-window.ProfileInfo = ProfileInfo; 

@@ -1,11 +1,11 @@
 // Product model for product data
-class Product {
+export class Product {
     constructor(data) {
         // Basic properties
         this.id = data.id || '';
         this.title = data.title || '';
+        this.cat = data.cat || 'Default';
         this.desc = data.desc || '';
-        this.cat = data.cat || 'Uncategorized';
         this.imgs = data.imgs || [];
         this.price = data.price || 0;
         this.mrp = data.mrp || 0;
@@ -170,10 +170,14 @@ class Product {
 
         return maxProductionScale;
     }
+
+    static get DUMMY_THUMB() {
+        return "https://firebasestorage.googleapis.com/v0/b/frihbi-app.appspot.com/o/assets%2Fproduct-placeholder.png?alt=media&token=183bdac4-2f9b-4645-8147-7cfa921ba0e9";
+    }
 }
 
 // Inventory Item model
-class InventoryItem {
+export class InventoryItem {
     constructor(data = {}) {
         this.id = data.id || '';
         this.name = data.name || '';
@@ -212,7 +216,7 @@ class InventoryItem {
 }
 
 // Charge model for additional charges
-class Charge {
+export class Charge {
     constructor(data = {}) {
         this.name = data.name || '';
         this.value = data.value || 0;
@@ -239,11 +243,3 @@ class Charge {
         return this.value;
     }
 }
-
-// Default placeholder image
-Product.DUMMY_THUMB = "https://firebasestorage.googleapis.com/v0/b/frihbi-app.appspot.com/o/assets%2Fproduct-placeholder.png?alt=media&token=183bdac4-2f9b-4645-8147-7cfa921ba0e9";
-
-// Make classes available globally
-window.Product = Product;
-window.InventoryItem = InventoryItem;
-window.Charge = Charge; 

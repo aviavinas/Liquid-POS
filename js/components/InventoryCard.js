@@ -1,9 +1,9 @@
 // Inventory Card Component
-function InventoryCard({ item, onEdit, onDelete }) {
+export function InventoryCard({ item, onEdit, onDelete }) {
     // Format date properly with a fallback
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
-        
+
         try {
             return new Date(dateString).toLocaleDateString();
         } catch (e) {
@@ -46,21 +46,21 @@ function InventoryCard({ item, onEdit, onDelete }) {
                 </div>
             </div>
             <div className="flex items-center justify-end gap-2 mt-3">
-                <button 
+                <button
                     className="px-2 py-1.5 text-sm bg-gradient-to-r hover:from-red-50 hover:to-white text-red-500 border border-gray-200 rounded-lg flex items-center gap-1.5"
                     onClick={() => onEdit && onEdit(item)}
                 >
                     <i className="ph ph-plus-circle"></i>
                     <span>Add Stock</span>
                 </button>
-                <button 
+                <button
                     className="px-2 py-1.5 text-sm bg-gradient-to-r hover:from-red-50 hover:to-white text-red-500 border border-gray-200 rounded-lg flex items-center gap-1.5"
                     onClick={() => onEdit && onEdit(item)}
                 >
                     <i className="ph ph-pencil-simple-line"></i>
                     <span>Edit</span>
                 </button>
-                <button 
+                <button
                     className="px-2 py-1.5 text-sm bg-gradient-to-r hover:from-red-50 hover:to-white text-red-500 border border-gray-200 rounded-lg flex items-center gap-1.5"
                     onClick={() => onDelete && onDelete(item.id)}
                 >

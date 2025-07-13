@@ -1,12 +1,16 @@
+import React, { useEffect, useRef } from 'react';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
+
 // Analytics Component
-function Analytics() {
-    const [metrics, setMetrics] = React.useState(null);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [dateFilter, setDateFilter] = React.useState('last30');
-    const [customDateRange, setCustomDateRange] = React.useState({ start: null, end: null });
-    const [selectedMetric, setSelectedMetric] = React.useState(null);
-    const [isExporting, setIsExporting] = React.useState(false);
+export default function Analytics() {
+    const [metrics, setMetrics] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [dateFilter, setDateFilter] = useState('last30');
+    const [customDateRange, setCustomDateRange] = useState({ start: null, end: null });
+    const [selectedMetric, setSelectedMetric] = useState(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     // Date filter options
     const dateFilters = [
@@ -120,7 +124,7 @@ function Analytics() {
         };
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         async function fetchAnalytics() {
             try {
                 setLoading(true);
@@ -272,8 +276,8 @@ function Analytics() {
     };
 
     const MetricCard = ({ title, value, trend, type = 'currency', className = '', onClick }) => {
-        const chartRef = React.useRef(null);
-        const canvasRef = React.useRef(null);
+        const chartRef = useRef(null);
+        const canvasRef = useRef(null);
 
         // Color schemes for different metric types
         const colorSchemes = {
@@ -360,7 +364,7 @@ function Analytics() {
 
         const scheme = getColorScheme();
 
-        React.useEffect(() => {
+        useEffect(() => {
             if (canvasRef.current) {
                 if (chartRef.current) {
                     chartRef.current.destroy();
@@ -405,7 +409,7 @@ function Analytics() {
         }, [trend, scheme]);
 
         const formattedValue = type === 'currency'
-            ? `${window.UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`
+            ? `${UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`
             : type === 'time'
                 ? `${Math.round(value)} min`
                 : value.toString();
@@ -596,7 +600,7 @@ function Analytics() {
                         <div className="space-y-4">
                             {(() => {
                                 const formatValue = (value, type = 'currency') => {
-                                    if (type === 'currency') return `${window.UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`;
+                                    if (type === 'currency') return `${UserSession?.getCurrency()}${Math.round(value).toLocaleString()}`;
                                     if (type === 'time') return `${Math.round(value)} min`;
                                     return value.toLocaleString();
                                 };
@@ -676,4 +680,4 @@ function Analytics() {
             )}
         </div>
     );
-} 
+}

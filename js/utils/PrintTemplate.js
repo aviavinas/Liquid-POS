@@ -8,7 +8,7 @@
  * PrintSection represents a section of content in a receipt template
  * with its own formatting options
  */
-class PrintSection {
+export class PrintSection {
     constructor(options = {}) {
         this.template = options.template || '';
         this.alignment = options.alignment || 'TextAlign.left';
@@ -80,11 +80,7 @@ class PrintSection {
     }
 }
 
-/**
- * PrintTemplate manages a collection of PrintSection objects and provides methods
- * for generating complete print output
- */
-class PrintTemplate {
+export class PrintTemplate {
     /**
      * Create a new PrintTemplate
      * @param {Object} options - Options for template creation
@@ -368,7 +364,7 @@ class PrintTemplate {
             instructions: orderData.instructions ? `Instructions:\n${orderData.instructions}` : '',
             customerName: orderData.customer?.name || orderData.custName || '',
             customerPhone: orderData.customer?.phone || orderData.custPhone || '',
-            
+
             // Add bulk tax update hashtag if present
             bulkTaxHashtag: orderData.taxUpdateInfo?.hashtag || ''
         };
@@ -403,31 +399,31 @@ class PrintTemplate {
             let hasBulkTaxUpdate = false;
             let bulkTaxHashtag = null;
             let total = 0; // Initialize total variable
-            
+
             // Use ChargesCalculator for consistent charge calculations
             if (orderData.charges && Array.isArray(orderData.charges)) {
-                const chargesCalculation = window.ChargesCalculator?.calculateCharges(
-                    subtotal, 
-                    orderData.charges, 
+                const chargesCalculation = ChargesCalculator?.calculateCharges(
+                    subtotal,
+                    orderData.charges,
                     orderData.discount || 0
                 );
-                
+
                 if (chargesCalculation && chargesCalculation.calculatedCharges) {
                     chargesCalculation.calculatedCharges.forEach(charge => {
                         chargesHtml += `${charge.displayName}: ${charge.calculatedAmount.toFixed(2)}\n`;
-                        
+
                         // Check if this charge has a bulk tax update hashtag
                         if (charge.bulkTaxHashtag) {
                             hasBulkTaxUpdate = true;
                             bulkTaxHashtag = charge.bulkTaxHashtag;
                         }
                     });
-                    
+
                     // Add bulk tax update information if present
                     if (hasBulkTaxUpdate && bulkTaxHashtag) {
                         chargesHtml += `\n${bulkTaxHashtag}\n`;
                     }
-                    
+
                     // Use the calculated final amount
                     total = chargesCalculation.finalAmount;
                 }
@@ -473,7 +469,7 @@ class PrintTemplate {
                 <div class="w-[70%]">${itemName}</div>
                 <div class="w-[20%] text-right">${amount.toFixed(2)}</div>
             </div>`;
-            
+
             // Add variant information if present
             if (item.variantName) {
                 html += `<div class="flex w-full text-xs pl-[10%]">
@@ -481,7 +477,7 @@ class PrintTemplate {
                     <div class="w-[20%] text-right text-gray-600">+${(item.variantPrice || 0).toFixed(2)}</div>
                 </div>`;
             }
-            
+
             // Add add-ons if present
             if (item.addons && item.addons.length > 0) {
                 item.addons.forEach(addon => {
@@ -520,7 +516,7 @@ class PrintTemplate {
                     Variant: ${item.variantName}
                 </div>`;
             }
-            
+
             // Add add-ons if present
             if (item.addons && item.addons.length > 0) {
                 html += `<div class="pl-5 text-xs text-gray-600">
@@ -609,8 +605,8 @@ class PrintTemplate {
 
         // Check if any items have originalQnt property (indicating quantity additions)
         const hasQuantityAdditions = orderData.items && orderData.items.some(item => item.originalQnt !== undefined);
-        const kotTitle = orderData.isPartialKOT 
-            ? (hasQuantityAdditions ? 'KOT (ADDITIONS)' : 'KOT (NEW ITEMS)') 
+        const kotTitle = orderData.isPartialKOT
+            ? (hasQuantityAdditions ? 'KOT (ADDITIONS)' : 'KOT (NEW ITEMS)')
             : 'KOT';
 
         // Header section with indication if this is a partial KOT
@@ -685,13 +681,4 @@ class PrintTemplate {
             </html>
         `);
     }
-}
-
-// Export the classes for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { PrintSection, PrintTemplate };
-} else {
-    // For browser environments
-    window.PrintSection = PrintSection;
-    window.PrintTemplate = PrintTemplate;
 }

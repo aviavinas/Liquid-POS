@@ -1,17 +1,20 @@
+import React from 'react';
+import { InventoryCard } from '../components/InventoryCard.js';
+
 // Products Component
-function Products() {
-    const [products, setProducts] = React.useState([]);
-    const [inventory, setInventory] = React.useState([]);
-    const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState(null);
-    const [activeTab, setActiveTab] = React.useState('products');
-    const [selectedCategory, setSelectedCategory] = React.useState('Appetizers');
-    const [categories, setCategories] = React.useState([]);
-    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
-    const [editingItem, setEditingItem] = React.useState(null);
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [productSearchQuery, setProductSearchQuery] = React.useState('');
-    const [sortBy, setSortBy] = React.useState('recent');
+export default function Products() {
+    const [products, setProducts] = useState([]);
+    const [inventory, setInventory] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState('products');
+    const [selectedCategory, setSelectedCategory] = useState('Appetizers');
+    const [categories, setCategories] = useState([]);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [productSearchQuery, setProductSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState('recent');
 
     // Define a function to refresh products and make it available globally
     const refreshProducts = async () => {
@@ -20,7 +23,7 @@ function Products() {
             setError(null);
 
             // Fetch products
-            const productsSnapshot = await window.sdk.db.collection("Product")
+            const productsSnapshot = await sdk.db.collection("Product")
                 .orderBy("date", "desc")
                 .limit(100)
                 .get();
@@ -43,7 +46,7 @@ function Products() {
             console.log(`Successfully loaded ${productsList.length} products`);
 
             // Fetch inventory items
-            const inventorySnapshot = await window.sdk.db.collection("Inventory")
+            const inventorySnapshot = await sdk.db.collection("Inventory")
                 .orderBy("updatedAt", "desc")
                 .limit(100)
                 .get();
@@ -112,22 +115,22 @@ function Products() {
     };
 
     // Make the refreshProducts function available globally
-    window.refreshProducts = refreshProducts;
+    refreshProducts = refreshProducts;
 
-    React.useEffect(() => {
+    useEffect(() => {
         // Load product data on initial render
         refreshProducts();
     }, []);
 
     // Filter inventory items based on search query
-    const filteredInventory = React.useMemo(() => {
+    const filteredInventory = useMemo(() => {
         return inventory.filter(item =>
             item.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [inventory, searchQuery]);
 
     // Filter products based on search query and category
-    const filteredProducts = React.useMemo(() => {
+    const filteredProducts = useMemo(() => {
         let filtered = products;
 
         // Filter by search query
@@ -310,7 +313,7 @@ function Products() {
 
         // Render the ProductFormModal inside the container
         ReactDOM.render(
-            React.createElement(window.ProductFormModal, {
+            createElement(ProductFormModal, {
                 isOpen: true,
                 onClose: () => {
                     ReactDOM.unmountComponentAtNode(modalContainer);
@@ -322,7 +325,7 @@ function Products() {
     };
 
     // Get the correct ProductCard component
-    const ProductCardComponent = window.ProductCard || ProductCard;
+    const ProductCardComponent = ProductCard || ProductCard;
 
     if (loading) {
         return (

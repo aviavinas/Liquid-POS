@@ -4,7 +4,7 @@
  * This utility provides methods to calculate charges, discounts, and final amounts
  * for orders based on the subtotal, charges array, and discount amount.
  */
-class ChargesCalculator {
+export default class ChargesCalculator {
     /**
      * Calculate charges, applying them to subtotal after discount
      * @param {number} subtotal - The order subtotal before charges
@@ -27,10 +27,10 @@ class ChargesCalculator {
         // Ensure subtotal and discount are numbers
         subtotal = parseFloat(subtotal) || 0;
         discount = parseFloat(discount) || 0;
-        
+
         // Ensure charges is an array
         charges = Array.isArray(charges) ? charges : [];
-        
+
         // Debug logging
         console.log("ChargesCalculator: Starting calculation with:", {
             subtotal,
@@ -42,33 +42,33 @@ class ChargesCalculator {
                 inclusive: c.inclusive
             }))
         });
-        
+
         // Apply discount to subtotal (ensure subtotal doesn't go negative)
         const subtotalAfterDiscount = Math.max(0, subtotal - discount);
-        
+
         const calculatedCharges = [];
         let finalAmount = subtotalAfterDiscount;
-        
+
         // Calculate each charge
         charges.forEach(charge => {
             if (!charge || !charge.name) return; // Skip invalid charges
-            
+
             // Default values
             let displayName = charge.name || 'Charge';
             let chargeAmount = 0;
-            
+
             // Calculate charge amount based on type
             if (charge.type === 'percentage' || (charge.value && charge.value.toString().includes('%'))) {
                 // Handle percentage-based charges
                 let percentage = 0;
-                
+
                 if (charge.type === 'percentage') {
                     percentage = parseFloat(charge.value) || 0;
                 } else {
                     const value = charge.value.toString().replace('%', '').trim();
                     percentage = parseFloat(value) || 0;
                 }
-                
+
                 // Calculate charge amount based on inclusivity
                 if (charge.inclusive) {
                     // For inclusive charges, the formula is: 
@@ -83,7 +83,7 @@ class ChargesCalculator {
                     console.log(`ChargesCalculator: Exclusive ${charge.name} (${percentage}%): ${chargeAmount.toFixed(2)} (added to final amount)`);
                     finalAmount += chargeAmount;
                 }
-                
+
                 // Add percentage to display name if not already included
                 if (!displayName.toLowerCase().includes('%')) {
                     displayName = `${displayName} (${percentage}%)`;
@@ -91,7 +91,7 @@ class ChargesCalculator {
             } else {
                 // Handle fixed charges
                 chargeAmount = parseFloat(charge.value) || 0;
-                
+
                 // Add fixed charge to final amount if not inclusive
                 if (!charge.inclusive) {
                     finalAmount += chargeAmount;
@@ -100,7 +100,7 @@ class ChargesCalculator {
                     console.log(`ChargesCalculator: Fixed charge ${charge.name}: ${chargeAmount.toFixed(2)} (included in subtotal)`);
                 }
             }
-            
+
             // Only add charge to the calculated charges if amount is not zero
             if (chargeAmount !== 0) {
                 calculatedCharges.push({
@@ -113,7 +113,7 @@ class ChargesCalculator {
                 });
             }
         });
-        
+
         console.log("ChargesCalculator: Final calculation result:", {
             originalSubtotal: subtotal,
             discount,
@@ -125,13 +125,13 @@ class ChargesCalculator {
             })),
             finalAmount
         });
-        
+
         return {
             calculatedCharges,
             finalAmount
         };
     }
-    
+
     /**
      * Format a number as currency
      * @param {number} amount - Amount to format
@@ -149,6 +149,3 @@ class ChargesCalculator {
         return ChargesCalculator.formatAmount(amount, decimals);
     }
 }
-
-// Initialize and expose globally
-window.ChargesCalculator = new ChargesCalculator(); 
