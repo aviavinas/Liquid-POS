@@ -317,16 +317,16 @@ export default function Products() {
             document.body.appendChild(modalContainer);
         }
 
-        // Render the ProductFormModal inside the container
-        ReactDOM.render(
+        // Create a root and render the ProductFormModal inside the container
+        const root = ReactDOM.createRoot(modalContainer);
+        root.render(
             createElement(ProductFormModal, {
                 isOpen: true,
                 onClose: () => {
-                    ReactDOM.unmountComponentAtNode(modalContainer);
+                    root.unmount();
                 },
                 product: null // null for add new product
-            }),
-            modalContainer
+            })
         );
     };
 
@@ -398,6 +398,7 @@ export default function Products() {
                             <ProductCard
                                 key={product.id}
                                 product={product}
+                                refreshProducts={refreshProducts}
                             />
                         ))}
                         {filteredProducts.length === 0 && (

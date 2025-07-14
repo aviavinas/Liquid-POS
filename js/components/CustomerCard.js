@@ -1,7 +1,11 @@
-import React from 'react';
+import { useState, useEffect, createElement } from 'react';
+import { sdk } from '../sdk.js';
+import { ModalManager } from './ModalManager.js';
+import { CustomerDetails } from './CustomerDetails.js';
+import { UserSession } from '../utils/UserSession.js';
 
 // Customer Card Component
-export default function CustomerCard({ customer }) {
+export function CustomerCard({ customer }) {
     // Setup state for real-time updates
     const [customerData, setCustomerData] = useState(customer);
     const [listener, setListener] = useState(null);

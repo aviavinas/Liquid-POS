@@ -5,9 +5,8 @@ import { sdk } from '../sdk.js';
 import { ProductFormModal } from './Modals.js';
 import { UserSession } from '../utils/UserSession.js';
 
-
 // Product Card Component
-export function ProductCard({ product }) {
+export function ProductCard({ product, refreshProducts }) {
     // Function to handle product deletion
     const handleDelete = (e) => {
         e.stopPropagation();
@@ -68,20 +67,21 @@ export function ProductCard({ product }) {
             document.body.appendChild(modalContainer);
         }
 
-        // Render the ProductFormModal inside the container
-        ReactDOM.render(
+        // Create a root and render the ProductFormModal inside the container
+        const root = ReactDOM.createRoot(modalContainer);
+        root.render(
             createElement(ProductFormModal, {
                 isOpen: true,
                 onClose: () => {
-                    ReactDOM.unmountComponentAtNode(modalContainer);
+                    // Unmount using root.unmount() instead of unmountComponentAtNode
+                    root.unmount();
                     // Refresh products data after modal is closed
                     if (refreshProducts && typeof refreshProducts === 'function') {
                         refreshProducts();
                     }
                 },
                 product: product
-            }),
-            modalContainer
+            })
         );
     };
 

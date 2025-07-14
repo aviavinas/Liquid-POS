@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import CustomerCard from '../components/CustomerCard.js';
-import CustomerDetails from '../components/CustomerDetails.js';
+import { useState, useEffect, useMemo } from 'react';
+import { CustomerCard } from '../components/CustomerCard.js';
+import { ModalManager } from '../components/ModalManager.js';
+import { sdk } from '../sdk.js';
 
 // Customers Component
 export default function Customers() {
-    const [customers, setCustomers] = te([]);
+    const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -12,6 +13,7 @@ export default function Customers() {
     const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [customerCardLoaded, setCustomerCardLoaded] = useState(false);
+    const [customersUnsubscribe, setCustomersUnsubscribe] = useState(null);
 
     useEffect(() => {
         // Check if CustomerCard component is loaded
@@ -71,7 +73,7 @@ export default function Customers() {
             }
 
             // Setup real-time listener
-            customersUnsubscribe = customersQuery.onSnapshot(snapshot => {
+            const unsubscribe = customersQuery.onSnapshot(snapshot => {
                 const customersList = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
@@ -84,6 +86,9 @@ export default function Customers() {
                 setError('Failed to load customers');
                 setLoading(false);
             });
+
+            // Store the unsubscribe function in state
+            setCustomersUnsubscribe(() => unsubscribe);
         } catch (err) {
             console.error('Error setting up customers listener:', err);
             setError('Failed to load customers');
@@ -98,7 +103,7 @@ export default function Customers() {
                 customersUnsubscribe();
             }
         };
-    }, []);
+    }, [customersUnsubscribe]);
 
     // Filter customers based on search query and filter type
     const filteredCustomers = useMemo(() => {

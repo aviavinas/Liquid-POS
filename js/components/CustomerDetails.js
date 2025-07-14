@@ -1,5 +1,9 @@
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
+import { ModalManager } from './ModalManager.js';
+
 // CustomerDetails Component
-export default function CustomerDetails() {
+export function CustomerDetails() {
     // Instance properties
     this.customerListener = null;
     this.walletListener = null;

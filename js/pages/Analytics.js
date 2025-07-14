@@ -1,5 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
+
 Chart.register(...registerables);
 
 // Analytics Component

@@ -1,6 +1,12 @@
+import { useState, useEffect, useRef } from 'react';
+import { PaymentMode } from '../models/Order.js';
+import { showToast } from '../utils.js';
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
+
 // Checkout Component for Shopto
-function CheckoutSheet({ order, onClose }) {
-    const [paymentMode, setPaymentMode] = te('Cash');
+export function CheckoutSheet({ order, onClose }) {
+    const [paymentMode, setPaymentMode] = useState('Cash');
     const [showContent, setShowContent] = useState(true);
     const [customer, setCustomer] = useState(null);
 
@@ -183,7 +189,7 @@ function CheckoutSheet({ order, onClose }) {
 }
 
 // Discount Button Component
-function DiscountButton({ initialDiscount = 0, maxDiscount, onDiscountChange }) {
+export function DiscountButton({ initialDiscount = 0, maxDiscount, onDiscountChange }) {
     const [isOpen, setIsOpen] = useState(false);
     const [discount, setDiscount] = useState(initialDiscount);
     const inputRef = useRef(null);
@@ -239,7 +245,7 @@ function DiscountButton({ initialDiscount = 0, maxDiscount, onDiscountChange }) 
 }
 
 // Add Customer Component
-function AddCustomer({ onSelectCustomer, onContentVisibilityChange }) {
+export function AddCustomer({ onSelectCustomer, onContentVisibilityChange }) {
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
