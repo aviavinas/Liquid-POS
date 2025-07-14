@@ -6,6 +6,7 @@ import { POS } from '../pages/POS.js';
 import ReactDOM from 'react-dom/client';
 import { UserSession } from '../utils/UserSession.js';
 import { CheckoutSheet } from './CheckoutSheet.js';
+import { Product, InventoryItem } from '../models/Product.js';
 
 // Add Table Modal Component
 export function AddTableModal({ isOpen, onClose, seller }) {

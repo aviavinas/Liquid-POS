@@ -1,5 +1,11 @@
-import React from 'react';
+import { useState, useEffect, useMemo, createElement } from 'react';
 import { InventoryCard } from '../components/InventoryCard.js';
+import { ProductCard } from '../components/ProductCard.js';
+import { ProductFormModal, AddInventoryModal } from '../components/Modals.js';
+import { showToast } from '../utils.js';
+import ReactDOM from 'react-dom/client';
+import { sdk } from '../sdk.js';
+import { Product, InventoryItem } from '../models/Product.js';
 
 // Products Component
 export default function Products() {
@@ -389,7 +395,7 @@ export default function Products() {
                     {/* Products List - Changed to Grid Layout */}
                     <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3 lg:gap-4 mt-4">
                         {filteredProducts.map(product => (
-                            <ProductCardComponent
+                            <ProductCard
                                 key={product.id}
                                 product={product}
                             />

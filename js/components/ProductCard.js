@@ -1,8 +1,13 @@
-import React, { useContext } from 'react';
-import { ProfileContext } from '../contexts/ProfileContext.js';
+import { createElement } from 'react';
+import { showToast } from '../utils.js';
+import ReactDOM from 'react-dom/client';
+import { sdk } from '../sdk.js';
+import { ProductFormModal } from './Modals.js';
+import { UserSession } from '../utils/UserSession.js';
+
 
 // Product Card Component
-export default function ProductCard({ product }) {
+export function ProductCard({ product }) {
     // Function to handle product deletion
     const handleDelete = (e) => {
         e.stopPropagation();
