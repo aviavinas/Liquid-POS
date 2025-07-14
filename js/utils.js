@@ -1,4 +1,5 @@
 
+export { ChargesCalculator } from './utils/ChargesCalculator.js';
 import { UserSession } from './utils/UserSession.js';
 import { ModalManager } from './components/ModalManager.js';
 import { CurrencyData } from './utils/CurrencyData.js';

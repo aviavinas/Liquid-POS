@@ -81,10 +81,11 @@ export function OrderProvider({ children }) {
 
         try {
             // Convert date objects to Firestore timestamps if needed
+            const Timestamp = sdk.db.firestore.app.firebase.firestore.Timestamp;
             const startTimestamp = dateRange.start instanceof Date ?
-                sdk.timestamp.fromDate(dateRange.start) : dateRange.start;
+                Timestamp.fromDate(dateRange.start) : dateRange.start;
             const endTimestamp = dateRange.end instanceof Date ?
-                sdk.timestamp.fromDate(dateRange.end) : dateRange.end;
+                Timestamp.fromDate(dateRange.end) : dateRange.end;
 
             let query = sdk.db.collection("Orders")
                 .where("currentStatus.label", "==", "COMPLETED")

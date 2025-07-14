@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, createElement } from 'react';
 import { useOrders } from '../contexts/OrderContext.js';
 import { BluetoothPrinting } from '../utils/BluetoothPrinting.js';
-import { getModalClasses, getModalOverlayClasses, showToast } from '../utils.js';
+import { getModalClasses, getModalOverlayClasses, showToast, ChargesCalculator } from '../utils.js';
 import { POS } from '../pages/POS.js';
 import ReactDOM from 'react-dom/client';
+import { UserSession } from '../utils/UserSession.js';
+import { CheckoutSheet } from './CheckoutSheet.js';
 
 // Add Table Modal Component
 export function AddTableModal({ isOpen, onClose, seller }) {
@@ -1683,6 +1685,7 @@ export function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KI
                                             order={mOrder}
                                             tableId={tableId}
                                             variant={variant}
+                                            refreshOrders={refreshCompletedOrders}
                                         />
                                     );
                                 })}
@@ -1705,7 +1708,7 @@ export function OrderRoom({ isOpen, onClose, tableId, variant, orderStatus = "KI
 }
 
 // OrderView Component
-export function OrderView({ order, tableId, variant }) {
+export function OrderView({ order, tableId, variant, refreshOrders }) {
     // Calculate served items
     const servedItems = order.items?.filter(item => item.served).length || 0;
     const totalItems = order.items?.length || 0;

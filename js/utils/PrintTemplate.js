@@ -1,3 +1,5 @@
+import { ChargesCalculator } from './ChargesCalculator.js';
+
 /**
  * PrintTemplate.js - Classes for managing thermal printer receipt templates
  * This module provides PrintSection and PrintTemplate classes for creating and managing

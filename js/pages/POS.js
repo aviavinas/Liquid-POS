@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { showToast } from '../utils/toast.js';
 import { UserSession } from '../utils/UserSession.js';
+import { OrderStatus } from '../models/OrderStatus.js';
+import { PaymentMode } from '../models/PaymentMode.js';
 import { sdk } from '../sdk.js';
 
 export function POS({ title, tableId, order, variant, checkout = false, includeAllProducts = true, onClose }) {

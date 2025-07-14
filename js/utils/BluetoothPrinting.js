@@ -1,4 +1,8 @@
 import { PrintTemplate, PrintSection } from './PrintTemplate.js';
+import { sdk } from '../sdk.js';
+import { UserSession } from './UserSession.js';
+import { ModalManager } from '../components/ModalManager.js';
+
 
 // BluetoothPrinting.js - Service for handling Bluetooth thermal printer connections
 // This service uses Web Bluetooth API which is supported in Chrome and Edge, but not Safari or Firefox

@@ -1,5 +1,5 @@
 // Payment Mode Enum for Shopto
-const PaymentMode = {
+export const PaymentMode = {
     CASH: "CASH",
     CARD: "CARD",
     UPI: "UPI",

@@ -4,7 +4,7 @@
  * This utility provides methods to calculate charges, discounts, and final amounts
  * for orders based on the subtotal, charges array, and discount amount.
  */
-export default class ChargesCalculator {
+export class ChargesCalculator {
     /**
      * Calculate charges, applying them to subtotal after discount
      * @param {number} subtotal - The order subtotal before charges

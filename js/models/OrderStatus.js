@@ -1,5 +1,5 @@
 // Order Status Enum for Shopto
-const OrderStatus = {
+export const OrderStatus = {
     PLACED: "PLACED",
     ACCEPTED: "ACCEPTED",
     KITCHEN: "KITCHEN",

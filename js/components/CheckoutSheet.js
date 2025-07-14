@@ -1,5 +1,15 @@
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { ChargesCalculator } from '../utils/ChargesCalculator.js';
+import { UserSession } from '../utils/UserSession.js';
+import { showToast } from '../utils.js';
+import { ModalManager } from './ModalManager.js';
+import { sdk } from '../sdk.js';
+import { Item, MOrder } from '../models/Order.js';
+import { UserSession } from '../utils/UserSession.js';
+import { BluetoothPrinting } from '../utils/BluetoothPrinting.js';
+
 // CheckoutSheet component for handling order checkout
-function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceVariant, onClose }) {
+export function CheckoutSheet({ cart, clearCallback, tableId, checkout, orderId, priceVariant, onClose }) {
     const [discount, setDiscount] = useState(0);
     const [instructions, setInstructions] = useState('');
     const [showDiscountModal, setShowDiscountModal] = useState(false);

@@ -1,3 +1,6 @@
+import { UserSession } from '../utils/UserSession.js';
+import { sdk } from '../sdk.js';
+
 // Order models for Shopto
 const DUMMY_THUMB = "https://firebasestorage.googleapis.com/v0/b/frihbi-app.appspot.com/o/assets%2Fproduct-placeholder.png?alt=media&token=183bdac4-2f9b-4645-8147-7cfa921ba0e9";
 
